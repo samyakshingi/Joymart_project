@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000';
@@ -9,6 +9,60 @@ export default function Tracking() {
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showOlderOrders, setShowOlderOrders] = useState(false);
+
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('joymart_phone');
+    if (savedPhone) {
+      setPhone(savedPhone);
+      setIsLoading(true);
+      axios.get(`${API_URL}/orders/tracking/${savedPhone}`)
+        .then(res => {
+          setOrders(res.data);
+          setHasSearched(true);
+        })
+        .catch(err => {
+          if (err.response && err.response.status === 404) {
+            setError("No orders found for this mobile number.");
+          }
+          setHasSearched(true);
+        })
+        .finally(() => setIsLoading(false));
+    }
+    
+    // Request notification permissions
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    let intervalId;
+    if (hasSearched && phone) {
+      intervalId = setInterval(() => {
+        axios.get(`${API_URL}/orders/tracking/${phone}`)
+          .then(res => {
+             setOrders(prevOrders => {
+               const newOrders = res.data;
+               newOrders.forEach(newO => {
+                 const prevO = prevOrders.find(o => o.id === newO.id);
+                 if (prevO && prevO.status !== 'OutForDelivery' && newO.status === 'OutForDelivery') {
+                    if ("Notification" in window && Notification.permission === 'granted') {
+                      new Notification("JoyMart: Your rider is arriving soon!", {
+                        body: `Order #${newO.id} is out for delivery!`,
+                        icon: '/favicon.ico'
+                      });
+                    }
+                 }
+               });
+               return newOrders;
+             });
+          })
+          .catch(err => console.error(err));
+      }, 5000);
+    }
+    return () => clearInterval(intervalId);
+  }, [hasSearched, phone]);
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -83,38 +137,88 @@ export default function Tracking() {
           )}
           
           {orders.map((order, index) => {
+            if (index > 0 && !showOlderOrders) return null;
             const statusInfo = getStatusDisplay(order.status);
             
             return (
-              <div key={order.id} className="bg-white rounded-[2rem] p-8 shadow-md border border-slate-100 overflow-hidden relative">
-                {index === 0 && (
-                  <div className="absolute top-6 right-6 flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
-                    <span className="flex h-2.5 w-2.5 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-xs font-black text-emerald-700 uppercase tracking-wider">Latest</span>
+              <React.Fragment key={order.id}>
+                {index === 1 && showOlderOrders && (
+                  <div className="border-t-4 border-dashed border-slate-100 pt-8 mt-12 mb-8">
+                    <h3 className="text-xl font-black text-slate-400 text-center uppercase tracking-widest">Older Orders</h3>
                   </div>
                 )}
-                
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6 mb-8">
+                <div className="bg-white rounded-[2rem] p-8 shadow-md border border-slate-100 overflow-hidden relative">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6 mb-4 pt-2">
                   <div>
-                    <span className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2 block">Order ID</span>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-sm font-black text-slate-400 uppercase tracking-widest block">Order ID</span>
+                      {index === 0 && (
+                        <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Latest</span>
+                        </div>
+                      )}
+                    </div>
                     <h3 className="text-3xl font-black text-slate-900">#{order.id}</h3>
                     <p className="text-slate-500 font-semibold mt-2">{new Date(order.order_date).toLocaleString()}</p>
                   </div>
-                  <div className={`px-6 py-3 rounded-2xl border-2 font-black flex items-center gap-3 ${statusInfo.color}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={statusInfo.icon}></path></svg>
-                    {statusInfo.text}
-                  </div>
+                  {order.status === 'Pending' && (
+                    <button 
+                      onClick={async () => {
+                        if (window.confirm("Are you sure you want to cancel this order?")) {
+                          try {
+                            await axios.put(`${API_URL}/orders/${order.id}/cancel`);
+                            const res = await axios.get(`${API_URL}/orders/tracking/${phone}`);
+                            setOrders(res.data);
+                          } catch (err) {
+                            alert("Failed to cancel order.");
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 border-2 border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-colors text-sm h-fit"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
                 </div>
 
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
+                {order.status !== 'Cancelled' ? (
+                  <div className="relative flex justify-between items-center mb-12 mt-6 px-2 sm:px-6">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-slate-100 rounded-full z-0"></div>
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-emerald-500 rounded-full z-0 transition-all duration-1000" style={{ width: `${(Math.max(0, ['Pending', 'Accepted', 'OutForDelivery', 'Completed'].indexOf(order.status)) / 3) * 100}%` }}></div>
+                    
+                    {['Pending', 'Accepted', 'OutForDelivery', 'Completed'].map((step, i) => {
+                      const currentStepIndex = ['Pending', 'Accepted', 'OutForDelivery', 'Completed'].indexOf(order.status);
+                      const isCompleted = i <= currentStepIndex;
+                      const isCurrent = i === currentStepIndex;
+                      return (
+                        <div key={step} className="relative z-10 flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all duration-500 border-4 ${isCompleted ? 'bg-emerald-500 text-white border-emerald-100 shadow-lg shadow-emerald-500/30' : 'bg-white text-slate-300 border-slate-100 shadow-sm'}`}>
+                            {isCompleted ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg> : i + 1}
+                          </div>
+                          <span className={`absolute top-12 text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-emerald-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                            {step === 'OutForDelivery' ? 'Out for Delivery' : step}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-red-50 text-red-600 font-bold p-4 rounded-xl text-center mb-8 border border-red-100 flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    This order was cancelled.
+                  </div>
+                )}
+
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6 mt-4">
                   <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Items</h4>
                   <div className="space-y-4">
                     {order.items.map(item => (
                       <div key={item.id} className="flex justify-between items-center text-base font-bold bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <span className="text-slate-700">Product #{item.product_id} <span className="mx-2 text-slate-300 font-medium">x</span> {item.quantity}</span>
+                        <span className="text-slate-700">{item.product?.name || `Product #${item.product_id}`} <span className="mx-2 text-slate-300 font-medium">x</span> {item.quantity}</span>
                         <span className="text-slate-900">₹{item.price_at_purchase * item.quantity}</span>
                       </div>
                     ))}
@@ -126,8 +230,20 @@ export default function Tracking() {
                   <span className="text-4xl font-black text-slate-900">₹{order.total_amount}</span>
                 </div>
               </div>
+              </React.Fragment>
             );
           })}
+          
+          {orders.length > 1 && (
+            <div className="text-center pt-4">
+              <button 
+                onClick={() => setShowOlderOrders(!showOlderOrders)}
+                className="bg-white hover:bg-slate-50 text-slate-600 font-bold py-4 px-8 rounded-full transition-colors border-2 border-slate-200 shadow-sm"
+              >
+                {showOlderOrders ? 'Hide Older Orders' : `View ${orders.length - 1} Older Orders`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

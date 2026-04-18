@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const API_URL = 'http://localhost:8000';
 
-export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal }) {
+export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen }) {
   const navigate = useNavigate();
   const deliveryFee = cartTotal >= 100 ? 0 : 30;
   const finalTotal = cartTotal + deliveryFee;
@@ -45,6 +45,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       const items = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }));
       await axios.post(`${API_URL}/orders`, { user_id: userId, items });
       
+      localStorage.setItem('joymart_phone', formData.phone);
       clearCart();
       navigate('/tracking');
     } catch (err) {
@@ -83,7 +84,33 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
           <form id="checkout-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-x-6 gap-y-8">
               <div className="col-span-2 space-y-2 relative">
-                <input required id="phone" type="tel" pattern="[0-9]{10}" placeholder=" " value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="peer w-full bg-transparent border-b-2 border-slate-200 px-2 py-3 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-xl" />
+                <input 
+                  required 
+                  id="phone" 
+                  type="tel" 
+                  pattern="[0-9]{10}" 
+                  placeholder=" " 
+                  value={formData.phone} 
+                  onChange={async (e) => {
+                    const value = e.target.value;
+                    setFormData({...formData, phone: value});
+                    if (value.length === 10) {
+                      try {
+                        const res = await axios.get(`${API_URL}/users/${value}`);
+                        if (res.data) {
+                          setFormData(prev => ({
+                            ...prev,
+                            phone: value,
+                            name: res.data.name || prev.name,
+                            society_id: res.data.society_id || prev.society_id,
+                            flat_number: res.data.flat_number || prev.flat_number
+                          }));
+                        }
+                      } catch (err) {}
+                    }
+                  }} 
+                  className="peer w-full bg-transparent border-b-2 border-slate-200 px-2 py-3 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-xl" 
+                />
                 <label htmlFor="phone" className="absolute left-2 -top-3.5 text-xs font-black text-slate-400 uppercase tracking-widest transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3 peer-focus:-top-3.5 peer-focus:text-xs peer-focus:text-emerald-500 pointer-events-none">10-Digit Mobile Number</label>
               </div>
               
@@ -166,11 +193,11 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
             <button 
               type="submit" 
               form="checkout-form"
-              disabled={isSubmitting}
-              className={`w-full text-white font-black text-xl py-5 px-6 rounded-2xl shadow-xl transition-all flex items-center justify-between group ${isSubmitting ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none' : 'bg-emerald-500 hover:bg-emerald-400 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/30'}`}
+              disabled={isSubmitting || !isStoreOpen}
+              className={`w-full text-white font-black text-xl py-5 px-6 rounded-2xl shadow-xl transition-all flex items-center justify-between group ${(isSubmitting || !isStoreOpen) ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none' : 'bg-emerald-500 hover:bg-emerald-400 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/30'}`}
             >
-              {isSubmitting ? (
-                <span className="w-full text-center">Processing...</span>
+              {(isSubmitting || !isStoreOpen) ? (
+                <span className="w-full text-center">{!isStoreOpen ? 'Store is Closed' : 'Processing...'}</span>
               ) : (
                 <>
                   <span>Place Order</span>

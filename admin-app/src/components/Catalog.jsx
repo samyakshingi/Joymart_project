@@ -9,7 +9,8 @@ export default function Catalog() {
     name: '',
     price: '',
     category: '',
-    image_url: ''
+    image_url: '',
+    stock_count: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,15 +36,25 @@ export default function Catalog() {
     }
   };
 
+  const updateStock = async (product, newStockCount) => {
+    try {
+      await axios.put(`${API_URL}/products/${product.id}/stock?stock_count=${newStockCount}`);
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating stock:', error);
+    }
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       await axios.post(`${API_URL}/products`, {
         ...newProduct,
-        price: parseFloat(newProduct.price)
+        price: parseFloat(newProduct.price),
+        stock_count: parseInt(newProduct.stock_count) || 0
       });
-      setNewProduct({ name: '', price: '', category: '', image_url: '' });
+      setNewProduct({ name: '', price: '', category: '', image_url: '', stock_count: 0 });
       fetchProducts();
     } catch (error) {
       console.error('Error adding product:', error);
@@ -59,7 +70,7 @@ export default function Catalog() {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
         <h2 className="text-2xl font-bold text-slate-800 mb-6">Add New Product</h2>
-        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 items-end">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Product Name</label>
             <input required type="text" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="e.g. Farm Fresh Milk 1L" />
@@ -75,6 +86,10 @@ export default function Catalog() {
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Image URL <span className="font-normal text-slate-400">(Cloudinary)</span></label>
             <input type="url" value={newProduct.image_url} onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="https://res.cloudinary.com/..." />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700">Stock Count</label>
+            <input required type="number" min="0" value={newProduct.stock_count} onChange={(e) => setNewProduct({...newProduct, stock_count: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="0" />
           </div>
           <button 
             type="submit" 
@@ -134,6 +149,21 @@ export default function Catalog() {
                     </div>
                   </div>
                   
+                  <div className={`flex items-center justify-between mb-4 p-2 rounded-xl border relative transition-colors ${product.stock_count > 0 && product.stock_count <= 5 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-100'}`}>
+                    {product.stock_count > 0 && product.stock_count <= 5 && (
+                      <span className="absolute -top-2 -right-2 flex h-4 w-4">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 border-2 border-white" title="Low Stock Warning!"></span>
+                      </span>
+                    )}
+                    <span className="text-sm font-bold text-slate-600">Stock:</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => updateStock(product, Math.max(0, product.stock_count - 1))} className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-md font-bold hover:bg-slate-100 text-slate-600">-</button>
+                      <span className={`font-black w-8 text-center ${product.stock_count > 0 && product.stock_count <= 5 ? 'text-amber-700' : 'text-slate-700'}`}>{product.stock_count}</span>
+                      <button onClick={() => updateStock(product, product.stock_count + 1)} className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-md font-bold hover:bg-slate-100 text-slate-600">+</button>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => toggleAvailability(product)}
                     className={`w-full py-2.5 px-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 ${

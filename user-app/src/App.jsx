@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './components/Home';
 import Checkout from './components/Checkout';
@@ -12,8 +13,31 @@ function ScrollToTop() {
 }
 
 function App() {
-  const [cart, setCart] = useState([]); 
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('joymart_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  }); 
   const [isBumping, setIsBumping] = useState(false);
+  const [isStoreOpen, setIsStoreOpen] = useState(true);
+
+  useEffect(() => {
+    localStorage.setItem('joymart_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    const fetchStatus = () => {
+      axios.get('http://localhost:8000/store/status')
+        .then(res => setIsStoreOpen(res.data.is_open))
+        .catch(err => console.error(err));
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const triggerBump = () => {
     setIsBumping(true);
@@ -24,7 +48,15 @@ function App() {
     setCart((prev) => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.stock_count) {
+          alert(`Only ${product.stock_count} ${product.name}(s) available in stock!`);
+          return prev;
+        }
         return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      if (product.stock_count <= 0) {
+        alert(`${product.name} is out of stock!`);
+        return prev;
       }
       return [...prev, { product, quantity: 1 }];
     });
@@ -54,6 +86,11 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      {!isStoreOpen && (
+        <div className="bg-red-600 text-white text-center font-black py-2.5 px-4 sticky top-0 z-[60] shadow-md tracking-widest text-sm uppercase">
+          ⚠️ STORE IS CURRENTLY CLOSED. WE ARE NOT ACCEPTING NEW ORDERS. ⚠️
+        </div>
+      )}
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
         <nav className="glass sticky top-0 z-50 transition-all duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
@@ -67,8 +104,9 @@ function App() {
                 </span>
               </Link>
               <div className="flex items-center space-x-4 sm:space-x-8">
-                <Link to="/tracking" className="text-sm font-bold text-slate-500 hover:text-emerald-600 transition-colors hidden sm:block">
-                  Track Order
+                <Link to="/tracking" className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors bg-slate-100 sm:bg-transparent p-2.5 sm:p-0 rounded-2xl sm:rounded-none">
+                  <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  <span className="text-sm font-bold hidden sm:block">Track Order</span>
                 </Link>
                 <Link to="/checkout" className={`relative flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-2xl hover:bg-emerald-500 transition-all shadow-lg hover:shadow-emerald-500/30 ${isBumping ? 'scale-110' : 'scale-100'}`}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
@@ -87,7 +125,7 @@ function App() {
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8">
           <Routes>
             <Route path="/" element={<Home addToCart={addToCart} decreaseQuantity={decreaseQuantity} cart={cart} />} />
-            <Route path="/checkout" element={<Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} />} />
+            <Route path="/checkout" element={<Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} />} />
             <Route path="/tracking" element={<Tracking />} />
           </Routes>
         </main>

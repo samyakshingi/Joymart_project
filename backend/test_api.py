@@ -54,7 +54,8 @@ def test_create_and_get_product():
     response = client.post("/products", json={
         "name": "Bread",
         "price": 40.0,
-        "category": "Bakery"
+        "category": "Bakery",
+        "stock_count": 3
     })
     assert response.status_code == 200
     data = response.json()
@@ -81,6 +82,12 @@ def test_create_order_valid():
     assert data["total_amount"] == 120.0
     assert data["status"] == "Pending"
 
+    # Verify stock decrement and is_available toggle
+    prod_resp = client.get("/products")
+    bread = prod_resp.json()[0]
+    assert bread["stock_count"] == 0
+    assert bread["is_available"] is False
+
 def test_create_order_invalid_product():
     # Test ordering a product that doesn't exist
     response = client.post("/orders", json={
@@ -99,5 +106,20 @@ def test_update_order_status():
     # Test Invalid Status
     response = client.put("/orders/1/status", json={"status": "Magic"})
     assert response.status_code == 400
+
+def test_get_user_by_phone():
+    response = client.get("/users/111222333")
+    assert response.status_code == 200
+    assert response.json()["name"] == "Test User"
+    
+    response = client.get("/users/000000000")
+    assert response.status_code == 404
+
+def test_get_frequent_products():
+    response = client.get("/orders/frequent/111222333")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "Bread"
 
     print("\n[SUCCESS] API Endpoints logic verified via TestClient!")

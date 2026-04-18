@@ -24,6 +24,7 @@ class Product(Base):
     is_available = Column(Boolean, default=True)
     image_url = Column(String)
     category = Column(String, index=True)
+    stock_count = Column(Integer, default=0)
 
 class Order(Base):
     __tablename__ = "orders"
@@ -44,3 +45,9 @@ class OrderItem(Base):
     price_at_purchase = Column(Numeric(10, 2))
 
     order = relationship("Order", back_populates="items")
+    product = relationship("Product")
+
+class StoreSetting(Base):
+    __tablename__ = "store_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    is_open = Column(Boolean, default=True)

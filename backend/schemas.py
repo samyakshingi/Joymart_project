@@ -30,6 +30,7 @@ class ProductBase(BaseModel):
     is_available: bool = True
     image_url: Optional[str] = None
     category: str
+    stock_count: int = 0
 
 class ProductCreate(ProductBase):
     pass
@@ -48,6 +49,7 @@ class OrderItemResponse(BaseModel):
     product_id: int
     quantity: int
     price_at_purchase: float
+    product: Optional[ProductResponse] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Order Schemas ---
@@ -66,3 +68,8 @@ class OrderResponse(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str
+
+# --- Store Schemas ---
+class StoreSettingResponse(BaseModel):
+    is_open: bool
+    model_config = ConfigDict(from_attributes=True)
