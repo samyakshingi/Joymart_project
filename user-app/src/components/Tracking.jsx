@@ -199,7 +199,7 @@ export default function Tracking() {
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all duration-500 border-4 ${isCompleted ? 'bg-emerald-500 text-white border-emerald-100 shadow-lg shadow-emerald-500/30' : 'bg-white text-slate-300 border-slate-100 shadow-sm'}`}>
                             {isCompleted ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg> : i + 1}
                           </div>
-                          <span className={`absolute top-12 text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-emerald-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                          <span className={`absolute top-12 text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-emerald-600' : isCompleted ? 'text-slate-700 hidden sm:block' : 'text-slate-400 hidden sm:block'}`}>
                             {step === 'OutForDelivery' ? 'Out for Delivery' : step}
                           </span>
                         </div>
