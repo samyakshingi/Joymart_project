@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Alert, useWindowDimensions, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Alert, useWindowDimensions, RefreshControl, Modal } from 'react-native';
 import { api } from '../api';
 
 export default function Catalog() {
@@ -7,10 +7,13 @@ export default function Catalog() {
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
+    discounted_price: '',
     category: '',
     image_url: '',
     stock_count: '0'
   });
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
@@ -63,14 +66,40 @@ export default function Catalog() {
       await api.post(`/products`, {
         ...newProduct,
         price: parseFloat(newProduct.price),
+        discounted_price: newProduct.discounted_price ? parseFloat(newProduct.discounted_price) : null,
         stock_count: parseInt(newProduct.stock_count) || 0
       });
-      setNewProduct({ name: '', price: '', category: '', image_url: '', stock_count: '0' });
+      setNewProduct({ name: '', price: '', discounted_price: '', category: '', image_url: '', stock_count: '0' });
       fetchProducts();
       Alert.alert("Success", "Product added successfully");
     } catch (error) {
       console.error('Error adding product:', error);
-      Alert.alert("Error", "Failed to add product. Please check your inputs.");
+      Alert.alert("Error", "Failed to add product.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct.name || !editingProduct.price) {
+      Alert.alert("Error", "Please fill required fields.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await api.put(`/products/${editingProduct.id}`, {
+        ...editingProduct,
+        price: parseFloat(editingProduct.price),
+        discounted_price: editingProduct.discounted_price ? parseFloat(editingProduct.discounted_price) : null,
+        stock_count: parseInt(editingProduct.stock_count) || 0
+      });
+      setIsEditModalVisible(false);
+      setEditingProduct(null);
+      fetchProducts();
+      Alert.alert("Success", "Product updated successfully");
+    } catch (error) {
+      console.error('Error updating product:', error);
+      Alert.alert("Error", "Failed to update product.");
     } finally {
       setIsSubmitting(false);
     }
@@ -94,6 +123,10 @@ export default function Catalog() {
           <View style={[styles.inputGroup, isTablet && styles.inputGroupTablet]}>
             <Text style={styles.label}>Price (₹)</Text>
             <TextInput style={styles.input} keyboardType="numeric" value={newProduct.price} onChangeText={(v) => setNewProduct({...newProduct, price: v})} placeholder="60.00" />
+          </View>
+          <View style={[styles.inputGroup, isTablet && styles.inputGroupTablet]}>
+            <Text style={styles.label}>Disc. Price (₹)</Text>
+            <TextInput style={styles.input} keyboardType="numeric" value={newProduct.discounted_price} onChangeText={(v) => setNewProduct({...newProduct, discounted_price: v})} placeholder="50.00" />
           </View>
           <View style={[styles.inputGroup, isTablet && styles.inputGroupTablet]}>
             <Text style={styles.label}>Category</Text>
@@ -153,8 +186,27 @@ export default function Catalog() {
               <View style={styles.productInfo}>
                 <View style={styles.infoTop}>
                   <Text style={[styles.productName, !product.is_available && styles.textMuted]} numberOfLines={2}>{product.name}</Text>
-                  <Text style={[styles.productPrice, !product.is_available && styles.textMuted]}>₹{product.price}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    {product.discounted_price ? (
+                      <>
+                        <Text style={[styles.originalPrice, !product.is_available && styles.textMuted]}>₹{product.price}</Text>
+                        <Text style={[styles.productPrice, !product.is_available && styles.textMuted]}>₹{product.discounted_price}</Text>
+                      </>
+                    ) : (
+                      <Text style={[styles.productPrice, !product.is_available && styles.textMuted]}>₹{product.price}</Text>
+                    )}
+                  </View>
                 </View>
+
+                <TouchableOpacity 
+                  onPress={() => {
+                    setEditingProduct({...product, price: product.price.toString(), discounted_price: product.discounted_price ? product.discounted_price.toString() : '', stock_count: product.stock_count.toString()});
+                    setIsEditModalVisible(true);
+                  }}
+                  style={styles.editLink}
+                >
+                  <Text style={styles.editLinkText}>✎ Edit Details</Text>
+                </TouchableOpacity>
 
                 <View style={styles.stockController}>
                   <Text style={styles.stockLabel}>Stock:</Text>
@@ -182,6 +234,45 @@ export default function Catalog() {
           ))}
         </View>
       )}
+
+      {/* Edit Modal */}
+      <Modal visible={isEditModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Product</Text>
+            {editingProduct && (
+              <View style={styles.formGrid}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Product Name</Text>
+                  <TextInput style={styles.input} value={editingProduct.name} onChangeText={(v) => setEditingProduct({...editingProduct, name: v})} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Price (₹)</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.price} onChangeText={(v) => setEditingProduct({...editingProduct, price: v})} />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Disc. Price (₹)</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.discounted_price} onChangeText={(v) => setEditingProduct({...editingProduct, discounted_price: v})} />
+                  </View>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Stock Count</Text>
+                  <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.stock_count} onChangeText={(v) => setEditingProduct({...editingProduct, stock_count: v})} />
+                </View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setIsEditModalVisible(false)}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleUpdateProduct}>
+                    <Text style={styles.saveBtnText}>Save Changes</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -225,8 +316,20 @@ const styles = StyleSheet.create({
   productInfo: { padding: 16 },
   infoTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   productName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a', flex: 1, marginRight: 8 },
+  originalPrice: { fontSize: 12, color: '#94a3b8', textDecorationLine: 'line-through' },
   productPrice: { fontSize: 18, fontWeight: '900', color: '#059669' },
+  editLink: { marginBottom: 12 },
+  editLinkText: { color: '#2563eb', fontWeight: 'bold', fontSize: 12 },
   textMuted: { color: '#94a3b8' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#fff', width: '100%', maxWidth: 500, borderRadius: 24, padding: 24 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a', marginBottom: 20 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  cancelBtn: { backgroundColor: '#f1f5f9' },
+  cancelBtnText: { color: '#475569', fontWeight: 'bold' },
+  saveBtn: { backgroundColor: '#0f172a' },
+  saveBtnText: { color: '#fff', fontWeight: 'bold' },
   stockController: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 16 },
   stockLabel: { fontSize: 14, fontWeight: 'bold', color: '#475569', marginLeft: 4 },
   stockActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

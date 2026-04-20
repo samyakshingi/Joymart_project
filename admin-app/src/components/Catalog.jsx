@@ -6,10 +6,12 @@ export default function Catalog() {
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
+    discounted_price: '',
     category: '',
     image_url: '',
     stock_count: 0
   });
+  const [editingProduct, setEditingProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchProducts = async () => {
@@ -50,13 +52,34 @@ export default function Catalog() {
       await api.post('/products', {
         ...newProduct,
         price: parseFloat(newProduct.price),
+        discounted_price: newProduct.discounted_price ? parseFloat(newProduct.discounted_price) : null,
         stock_count: parseInt(newProduct.stock_count) || 0
       });
-      setNewProduct({ name: '', price: '', category: '', image_url: '', stock_count: 0 });
+      setNewProduct({ name: '', price: '', discounted_price: '', category: '', image_url: '', stock_count: 0 });
       fetchProducts();
     } catch (error) {
       console.error('Error adding product:', error);
-      alert("Failed to add product. Please check your inputs.");
+      alert("Failed to add product.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.put(`/products/${editingProduct.id}`, {
+        ...editingProduct,
+        price: parseFloat(editingProduct.price),
+        discounted_price: editingProduct.discounted_price ? parseFloat(editingProduct.discounted_price) : null,
+        stock_count: parseInt(editingProduct.stock_count) || 0
+      });
+      setEditingProduct(null);
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert("Failed to update product.");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,6 +99,10 @@ export default function Catalog() {
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Price (₹)</label>
             <input required type="number" step="0.01" min="0" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="60.00" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700">Disc. Price (₹)</label>
+            <input type="number" step="0.01" min="0" value={newProduct.discounted_price} onChange={(e) => setNewProduct({...newProduct, discounted_price: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="50.00" />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Category</label>
@@ -136,16 +163,27 @@ export default function Catalog() {
                 </div>
                 
                 <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className={`font-bold text-lg leading-tight line-clamp-2 ${product.is_available ? 'text-slate-900' : 'text-slate-500'}`} title={product.name}>
-                        {product.name}
-                      </h3>
-                      <span className={`font-black text-lg ${product.is_available ? 'text-emerald-600' : 'text-slate-400'}`}>
-                        ₹{product.price}
-                      </span>
+                  <div className="flex justify-between items-start gap-4 mb-3">
+                    <h3 className={`font-bold text-slate-800 leading-tight ${!product.is_available ? 'text-slate-400' : ''}`}>{product.name}</h3>
+                    <div className="flex flex-col items-end shrink-0">
+                      {product.discounted_price ? (
+                        <>
+                          <span className="text-[10px] text-slate-400 line-through">₹{product.price}</span>
+                          <span className={`font-black text-base ${product.is_available ? 'text-emerald-600' : 'text-slate-400'}`}>₹{product.discounted_price}</span>
+                        </>
+                      ) : (
+                        <span className={`font-black text-base ${product.is_available ? 'text-emerald-600' : 'text-slate-400'}`}>₹{product.price}</span>
+                      )}
                     </div>
                   </div>
+                  
+                  <button 
+                    onClick={() => setEditingProduct({...product, price: product.price.toString(), discounted_price: product.discounted_price ? product.discounted_price.toString() : '', stock_count: product.stock_count.toString()})}
+                    className="text-blue-600 text-xs font-bold hover:underline mb-4 text-left"
+                  >
+                    ✎ Edit Details
+                  </button>
+
                   
                   <div className={`flex items-center justify-between mb-4 p-2 rounded-xl border relative transition-colors ${product.stock_count > 0 && product.stock_count <= 5 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-100'}`}>
                     {product.stock_count > 0 && product.stock_count <= 5 && (
@@ -178,6 +216,41 @@ export default function Catalog() {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-8">
+              <h3 className="text-2xl font-bold text-slate-900 mb-6">Edit Product</h3>
+              <form onSubmit={handleUpdateProduct} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Product Name</label>
+                  <input required type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Price (₹)</label>
+                    <input required type="number" step="0.01" value={editingProduct.price} onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Disc. Price (₹)</label>
+                    <input type="number" step="0.01" value={editingProduct.discounted_price} onChange={(e) => setEditingProduct({...editingProduct, discounted_price: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Stock Count</label>
+                  <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 px-6 py-3 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

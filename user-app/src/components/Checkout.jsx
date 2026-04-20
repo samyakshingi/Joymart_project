@@ -4,8 +4,16 @@ import { useNavigate, Link } from 'react-router-dom';
 
 export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen }) {
   const navigate = useNavigate();
+
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [deliveryInstructions, setDeliveryInstructions] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash or UPI
+
+  const discountAmount = appliedCoupon ? (cartTotal * appliedCoupon.discount_percentage / 100) : 0;
   const deliveryFee = cartTotal >= 100 ? 0 : 30;
-  const finalTotal = cartTotal + deliveryFee;
+  const finalTotal = (cartTotal - discountAmount) + deliveryFee + tipAmount;
 
   const [societies, setSocieties] = useState([]);
   const [formData, setFormData] = useState({
@@ -26,6 +34,20 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
     fetchSocieties();
   }, []);
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    try {
+      const res = await api.get(`/coupons/${couponCode.toUpperCase()}`);
+      if (res.data.is_active) {
+        setAppliedCoupon(res.data);
+      } else {
+        alert("This coupon is no longer active.");
+      }
+    } catch (err) {
+      alert("Invalid coupon code.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return alert("Cart is empty");
@@ -41,7 +63,14 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       const userId = userRes.data.id;
 
       const items = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }));
-      await api.post('/orders', { user_id: userId, items });
+      await api.post('/orders', { 
+        user_id: userId, 
+        items,
+        tip_amount: tipAmount,
+        delivery_instructions: deliveryInstructions,
+        applied_coupon: appliedCoupon ? appliedCoupon.code : null,
+        payment_method: paymentMethod
+      });
       
       localStorage.setItem('joymart_phone', formData.phone);
       clearCart();
@@ -130,6 +159,77 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                 <input required id="flat" type="text" placeholder="e.g. A-101" value={formData.flat_number} onChange={e => setFormData({...formData, flat_number: e.target.value})} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-lg placeholder:font-medium placeholder:text-slate-300" />
               </div>
             </div>
+
+            
+            <div className="mt-10 space-y-8">
+              <div className="space-y-4">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Delivery Instructions</label>
+                <textarea 
+                  placeholder="e.g. Leave at the gate, ring the bell, etc." 
+                  value={deliveryInstructions} 
+                  onChange={e => setDeliveryInstructions(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-4 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 h-32 resize-none placeholder:text-slate-300"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Apply Coupon</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="ENTER CODE" 
+                      value={couponCode} 
+                      onChange={e => setCouponCode(e.target.value)}
+                      disabled={!!appliedCoupon}
+                      className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-black text-slate-900 uppercase tracking-widest disabled:opacity-50"
+                    />
+                    {appliedCoupon ? (
+                      <button type="button" onClick={() => {setAppliedCoupon(null); setCouponCode('');}} className="px-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 border border-red-100 text-xs transition-colors">REMOVE</button>
+                    ) : (
+                      <button type="button" onClick={handleApplyCoupon} className="px-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-colors text-xs">APPLY</button>
+                    )}
+                  </div>
+                  {appliedCoupon && <p className="text-xs font-bold text-emerald-600 pl-2">✓ Coupon applied successfully!</p>}
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Rider Tip</label>
+                  <div className="flex gap-2">
+                    {[10, 20, 50, 100].map(amt => (
+                      <button 
+                        key={amt}
+                        type="button"
+                        onClick={() => setTipAmount(tipAmount === amt ? 0 : amt)}
+                        className={`flex-1 py-3 rounded-2xl font-black text-sm transition-all border-2 ${tipAmount === amt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'}`}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Payment Method</label>
+                <div className="flex gap-4">
+                  {['Cash', 'UPI'].map(method => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                      className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-lg transition-all border-2 ${paymentMethod === method ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'}`}
+                    >
+                      <div className={`w-6 h-6 rounded-full border-4 flex items-center justify-center ${paymentMethod === method ? 'border-white' : 'border-slate-200'}`}>
+                        {paymentMethod === method && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                      </div>
+                      {method}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 pl-2 uppercase tracking-tighter">Please pay the rider via {paymentMethod} on delivery.</p>
+              </div>
+            </div>
           </form>
         </div>
       </div>
@@ -144,7 +244,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
               <div key={item.product.id} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 group">
                 <div className="flex-1 pr-4">
                   <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.product.name}</h4>
-                  <p className="text-slate-500 font-bold text-sm mt-1">₹{item.product.price}</p>
+                  <p className="text-slate-500 font-bold text-sm mt-1">₹{item.product.discounted_price || item.product.price}</p>
                 </div>
                 
                 <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 shadow-sm shrink-0">
@@ -161,6 +261,12 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
               <span>Item Total</span>
               <span className="text-slate-900">₹{cartTotal.toFixed(2)}</span>
             </div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-sm font-bold text-emerald-600">
+                <span>Coupon Discount ({appliedCoupon.discount_percentage}%)</span>
+                <span>-₹{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm font-bold">
               <span className="text-slate-500">Delivery Partner Fee</span>
               {deliveryFee === 0 ? (
@@ -169,7 +275,13 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                 <span className="text-slate-900">₹{deliveryFee.toFixed(2)}</span>
               )}
             </div>
-            {deliveryFee > 0 && (
+            {tipAmount > 0 && (
+              <div className="flex justify-between text-sm font-bold text-slate-500">
+                <span>Rider Tip</span>
+                <span className="text-slate-900">₹{tipAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {deliveryFee > 0 && !appliedCoupon && (
               <div className="bg-emerald-100/50 border border-emerald-200 p-3 rounded-xl text-center mt-2">
                 <p className="text-xs text-emerald-800 font-bold tracking-wide">Add ₹{(100 - cartTotal).toFixed(2)} more for FREE Delivery!</p>
               </div>

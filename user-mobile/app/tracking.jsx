@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native';
 import { api } from '../api';
 import { useStore } from '../store';
 
@@ -174,6 +174,15 @@ export default function Tracking() {
                       <Text style={styles.cancelBtnText}>Cancel</Text>
                     </TouchableOpacity>
                   )}
+                  <TouchableOpacity 
+                    style={styles.helpBtn}
+                    onPress={() => {
+                      const msg = encodeURIComponent(`Hi JoyMart, I need help with my Order #${order.id}`);
+                      Linking.openURL(`https://wa.me/910000000000?text=${msg}`);
+                    }}
+                  >
+                    <Text style={styles.helpBtnText}>💬 Help</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {order.status !== 'Cancelled' ? (
@@ -212,6 +221,30 @@ export default function Tracking() {
                       <Text style={styles.itemPrice}>₹{item.price_at_purchase * item.quantity}</Text>
                     </View>
                   ))}
+
+                </View>
+
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Subtotal</Text>
+                    <Text style={styles.summaryValue}>₹{(order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0)).toFixed(2)}</Text>
+                  </View>
+                  {order.applied_coupon && (
+                    <View style={styles.summaryRow}>
+                      <Text style={[styles.summaryLabel, { color: '#059669' }]}>Coupon Discount</Text>
+                      <Text style={[styles.summaryValue, { color: '#059669' }]}>-₹{(order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) - (order.total_amount - order.tip_amount - (order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? 0 : 30))).toFixed(2)}</Text>
+                    </View>
+                  )}
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Delivery Fee</Text>
+                    <Text style={styles.summaryValue}>₹{order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? '0.00' : '30.00'}</Text>
+                  </View>
+                  {order.tip_amount > 0 && (
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Rider Tip</Text>
+                      <Text style={styles.summaryValue}>₹{order.tip_amount.toFixed(2)}</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.totalRow}>
@@ -269,6 +302,8 @@ const styles = StyleSheet.create({
   orderDate: { fontSize: 14, fontWeight: 'bold', color: '#64748b', marginTop: 4 },
   cancelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 2, borderColor: '#fecaca', borderRadius: 8 },
   cancelBtnText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
+  helpBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#10b981', borderRadius: 8 },
+  helpBtnText: { color: '#059669', fontWeight: 'bold', fontSize: 12 },
   trackerContainer: { position: 'relative', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 32, paddingHorizontal: 16 },
   trackerLineBg: { position: 'absolute', left: 32, right: 32, top: 18, height: 4, backgroundColor: '#f1f5f9', borderRadius: 2 },
   trackerLineFill: { position: 'absolute', left: 32, top: 18, height: 4, backgroundColor: '#10b981', borderRadius: 2, zIndex: 1 },
@@ -287,6 +322,10 @@ const styles = StyleSheet.create({
   itemsBox: { backgroundColor: '#f8fafc', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 20 },
   itemsLabel: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 1, marginBottom: 12 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  summaryBox: { padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9', marginBottom: 16 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  summaryLabel: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
+  summaryValue: { fontSize: 14, fontWeight: '900', color: '#0f172a' },
   itemName: { fontSize: 14, fontWeight: 'bold', color: '#334155' },
   itemPrice: { fontSize: 14, fontWeight: '900', color: '#0f172a' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 2, borderTopColor: '#f1f5f9', borderStyle: 'dashed', paddingTop: 20 },

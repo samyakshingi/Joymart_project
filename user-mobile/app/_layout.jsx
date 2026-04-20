@@ -24,6 +24,14 @@ export default function Layout() {
     return () => clearInterval(interval);
   }, []);
 
+  const user = useStore(state => state.user);
+
+  useEffect(() => {
+    if (!user.phone && pathname !== '/login' && pathname !== '/privacy' && pathname !== '/terms' && pathname !== '/about') {
+      router.replace('/login');
+    }
+  }, [user.phone, pathname]);
+
   const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -55,6 +63,7 @@ export default function Layout() {
         </View>
         <Slot />
       </View>
+
     </QueryClientProvider>
   );
 }
@@ -139,5 +148,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '900',
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#fff',
+  },
+  footerLinkText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+  },
+  footerDot: {
+    fontSize: 12,
+    color: '#cbd5e1',
   }
 });

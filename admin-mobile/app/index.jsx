@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, RefreshControl } from 'react-native';
 import { api } from '../api';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -39,6 +41,44 @@ export default function Orders() {
       fetchOrders();
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+
+  const handlePrint = async (order) => {
+    const subtotal = order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0);
+    const delivery = subtotal >= 100 ? 0 : 30;
+    
+    const html = `
+      <html>
+        <body style="font-family: 'Courier'; padding: 20px;">
+          <h1 style="text-align: center;">JOYMART</h1>
+          <p style="text-align: center;">Fresh Groceries to your Door</p>
+          <hr/>
+          <p>Order: #${order.id}</p>
+          <p>Date: ${new Date(order.order_date).toLocaleString()}</p>
+          <p>Payment: ${order.payment_method}</p>
+          <hr/>
+          ${order.items.map(i => `
+            <div style="display: flex; justify-content: space-between;">
+              <span>${i.product?.name || 'Product'} x ${i.quantity}</span>
+              <span>₹${(i.price_at_purchase * i.quantity).toFixed(2)}</span>
+            </div>
+          `).join('')}
+          <hr/>
+          <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span>TOTAL</span>
+            <span>₹${order.total_amount}</span>
+          </div>
+          <p style="text-align: center; margin-top: 40px;">Thank you!</p>
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -101,18 +141,35 @@ export default function Orders() {
                   columnOrders.map(order => (
                     <View key={order.id} style={styles.orderCard}>
                       <View style={styles.orderHeaderRow}>
-                        <View>
-                          <Text style={styles.orderIdLabel}>ORDER ID</Text>
-                          <Text style={styles.orderIdValue}>#{order.id}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View>
+                            <Text style={styles.orderIdLabel}>ORDER ID</Text>
+                            <Text style={styles.orderIdValue}>#{order.id}</Text>
+                          </View>
+                          <TouchableOpacity onPress={() => handlePrint(order)} style={styles.printBtn}>
+                            <Text style={{ fontSize: 18 }}>🖨️</Text>
+                          </TouchableOpacity>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={styles.orderIdLabel}>TOTAL</Text>
                           <Text style={styles.orderTotalValue}>₹{order.total_amount}</Text>
+                          {order.tip_amount > 0 && (
+                            <Text style={styles.tipBadge}>+ ₹{order.tip_amount} Tip</Text>
+                          )}
                         </View>
                       </View>
                       
+                      {order.delivery_instructions && (
+                        <View style={styles.instructionsBox}>
+                          <Text style={styles.instructionsLabel}>INSTRUCTIONS:</Text>
+                          <Text style={styles.instructionsText}>{order.delivery_instructions}</Text>
+                        </View>
+                      )}
+                      
                       <View style={styles.orderMetaRow}>
                         <Text style={styles.orderMetaText}>{order.items.reduce((sum, item) => sum + item.quantity, 0)} Items</Text>
+                        <Text style={styles.orderMetaText}>•</Text>
+                        <Text style={styles.paymentMethodLabel}>{order.payment_method}</Text>
                         <Text style={styles.orderMetaText}>•</Text>
                         <Text style={styles.orderMetaText}>User ID: {order.user_id}</Text>
                       </View>
@@ -195,6 +252,10 @@ const styles = StyleSheet.create({
   orderIdLabel: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 1, marginBottom: 4 },
   orderIdValue: { fontSize: 20, fontWeight: '900', color: '#0f172a' },
   orderTotalValue: { fontSize: 20, fontWeight: '900', color: '#059669' },
+  tipBadge: { fontSize: 10, fontWeight: 'bold', color: '#10b981', backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
+  instructionsBox: { backgroundColor: '#fff7ed', borderLeftWidth: 4, borderLeftColor: '#fb923c', padding: 10, borderRadius: 8, marginBottom: 12 },
+  instructionsLabel: { fontSize: 9, fontWeight: '900', color: '#9a3412', marginBottom: 2 },
+  instructionsText: { fontSize: 13, color: '#7c2d12', fontWeight: 'bold' },
   orderMetaRow: { flexDirection: 'row', backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, justifyContent: 'space-between', marginBottom: 16 },
   orderMetaText: { fontSize: 12, fontWeight: 'bold', color: '#475569' },
   actionRow: { flexDirection: 'row', gap: 8 },
@@ -208,5 +269,7 @@ const styles = StyleSheet.create({
   btnComplete: { flex: 2, backgroundColor: '#f3e8ff', borderWidth: 1, borderColor: '#e9d5ff' },
   textComplete: { color: '#7e22ce', fontWeight: 'bold' },
   completedBadge: { backgroundColor: '#f8fafc', paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
-  completedBadgeText: { color: '#64748b', fontWeight: 'bold' }
+  completedBadgeText: { color: '#64748b', fontWeight: 'bold' },
+  printBtn: { backgroundColor: '#f1f5f9', p: 8, borderRadius: 12, padding: 6 },
+  paymentMethodLabel: { fontSize: 10, fontWeight: '900', color: '#10b981', backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, textTransform: 'uppercase' }
 });

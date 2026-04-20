@@ -17,6 +17,79 @@ export default function Orders() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/reports/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `joymart_orders_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert("Failed to export data.");
+    }
+  };
+
+  const handlePrint = (order) => {
+    const printWindow = window.open('', '_blank');
+    const itemsHtml = order.items.map(item => `
+      <div style="display: flex; justify-between; margin-bottom: 4px;">
+        <span style="flex: 1;">${item.product?.name || 'Product'} x ${item.quantity}</span>
+        <span>₹${(item.price_at_purchase * item.quantity).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    const subtotal = order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0);
+    const delivery = subtotal >= 100 ? 0 : 30;
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>JoyMart Receipt #${order.id}</title>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            body { font-family: 'Courier New', Courier, monospace; width: 80mm; padding: 10mm; font-size: 12px; line-height: 1.4; color: #000; }
+            .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .logo { font-size: 20px; font-weight: bold; }
+            .details { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .total-row { display: flex; justify-content: space-between; font-weight: bold; margin-top: 5px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px; }
+          </style>
+        </head>
+        <body onload="window.print();window.close();">
+          <div class="header">
+            <div class="logo">JOYMART</div>
+            <div>Fresh Groceries to your Door</div>
+            <div>${new Date(order.order_date).toLocaleString()}</div>
+          </div>
+          <div class="details">
+            <div>Order ID: #${order.id}</div>
+            <div>Payment: ${order.payment_method}</div>
+            <div>Customer: ${order.user_id}</div>
+          </div>
+          <div style="margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px;">
+            ${itemsHtml}
+          </div>
+          <div class="summary">
+            <div class="total-row"><span>Subtotal:</span> <span>₹${subtotal.toFixed(2)}</span></div>
+            <div class="total-row"><span>Delivery:</span> <span>₹${delivery.toFixed(2)}</span></div>
+            ${order.tip_amount > 0 ? `<div class="total-row"><span>Rider Tip:</span> <span>₹${order.tip_amount}</span></div>` : ''}
+            <div class="total-row" style="font-size: 16px; margin-top: 10px; border-top: 1px solid #000; padding-top: 5px;">
+              <span>TOTAL:</span> <span>₹${order.total_amount}</span>
+            </div>
+          </div>
+          <div class="footer">
+            Thank you for shopping at JoyMart!<br>Visit us again.
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
@@ -60,6 +133,13 @@ export default function Orders() {
             </span>
             <span className="text-[10px] font-black text-white tracking-widest uppercase">Sync</span>
           </div>
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold text-xs transition-all border border-slate-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Export CSV
+          </button>
         </div>
         
         {analytics && (
@@ -111,16 +191,39 @@ export default function Orders() {
                       <div className="flex justify-between items-start mb-4 border-b border-slate-100 pb-3">
                         <div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Order ID</span>
-                          <span className="font-black text-slate-900 text-xl">#{order.id}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-black text-slate-900 text-xl">#{order.id}</span>
+                            <button 
+                              onClick={() => handlePrint(order)}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-900"
+                              title="Print Bill"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            </button>
+                          </div>
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total</span>
                           <span className="font-black text-emerald-600 text-xl">₹{order.total_amount}</span>
+                          {order.tip_amount > 0 && (
+                            <div className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">
+                              + ₹{order.tip_amount} Tip
+                            </div>
+                          )}
                         </div>
                       </div>
                       
+                      {order.delivery_instructions && (
+                        <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-xl">
+                          <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Instructions</p>
+                          <p className="text-xs font-bold text-amber-900">{order.delivery_instructions}</p>
+                        </div>
+                      )}
+                      
                       <div className="text-xs font-bold text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
                         <span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} Items</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="uppercase tracking-widest text-[9px] bg-slate-200 px-1.5 py-0.5 rounded">{order.payment_method}</span>
                         <span className="text-slate-400">•</span>
                         <span>User ID: {order.user_id}</span>
                       </div>

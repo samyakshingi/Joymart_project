@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import Orders from './components/Orders';
 import Catalog from './components/Catalog';
+import Coupons from './components/Coupons';
+import Accounts from './components/Accounts';
+import Reconciliation from './components/Reconciliation';
 
 function App() {
   const [activeTab, setActiveTab] = useState('orders');
@@ -59,13 +62,47 @@ function App() {
               >
                 Catalog Management
               </button>
+              <button
+                onClick={() => setActiveTab('coupons')}
+                className={`${
+                  activeTab === 'coupons'
+                    ? 'border-emerald-500 text-emerald-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+              >
+                Coupons
+              </button>
+              <button
+                onClick={() => setActiveTab('accounts')}
+                className={`${
+                  activeTab === 'accounts'
+                    ? 'border-emerald-500 text-emerald-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+              >
+                Accounts (Khata)
+              </button>
+              <button
+                onClick={() => setActiveTab('reconciliation')}
+                className={`${
+                  activeTab === 'reconciliation'
+                    ? 'border-emerald-500 text-emerald-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+              >
+                Reconciliation
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {activeTab === 'orders' ? <Orders /> : <Catalog />}
+        {activeTab === 'orders' ? <Orders /> : 
+         activeTab === 'catalog' ? <Catalog /> : 
+         activeTab === 'coupons' ? <Coupons /> : 
+         activeTab === 'accounts' ? <Accounts /> : 
+         <Reconciliation />}
       </main>
     </div>
   );

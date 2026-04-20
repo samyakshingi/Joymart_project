@@ -14,17 +14,13 @@ def seed_db():
     db = SessionLocal()
     
     # 1. Seed Societies
-    if db.query(models.Society).count() == 0:
-        print("Seeding Societies...")
-        societies = [
-            models.Society(name="Prestige Falcon City"),
-            models.Society(name="Brigade Metropolis"),
-            models.Society(name="Sobha City")
-        ]
-        db.add_all(societies)
-        db.commit()
-    else:
-        print("Societies already exist. Skipping...")
+    print("Seeding Societies...")
+    societies_names = ["Prestige Falcon City", "Brigade Metropolis", "Sobha City", "Test Society"]
+    for name in societies_names:
+        existing = db.query(models.Society).filter(models.Society.name == name).first()
+        if not existing:
+            db.add(models.Society(name=name))
+    db.commit()
 
     # 2. Seed Products
     # 2. Seed Products

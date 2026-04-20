@@ -80,7 +80,16 @@ export default function Home() {
             <Text style={styles.productCategory}>{product.category}</Text>
           </View>
           <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>₹{product.price}</Text>
+            <View>
+              {product.discounted_price ? (
+                <>
+                  <Text style={styles.originalPrice}>₹{product.price}</Text>
+                  <Text style={styles.productPrice}>₹{product.discounted_price}</Text>
+                </>
+              ) : (
+                <Text style={styles.productPrice}>₹{product.price}</Text>
+              )}
+            </View>
             {qty === 0 ? (
               <TouchableOpacity onPress={() => addToCart(product)} style={styles.addButton}>
                 <Text style={styles.addButtonText}>+</Text>
@@ -255,8 +264,9 @@ const styles = StyleSheet.create({
   productInfo: { padding: 12, flex: 1, justifyContent: 'space-between' },
   productName: { fontSize: 14, fontWeight: 'bold', color: '#1e293b', marginBottom: 4 },
   productCategory: { fontSize: 10, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 12 },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  productPrice: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  originalPrice: { fontSize: 12, color: '#94a3b8', textDecorationLine: 'line-through', marginBottom: -2 },
+  productPrice: { fontSize: 18, fontWeight: '900', color: '#0f172a' },
   addButton: { width: 36, height: 36, backgroundColor: '#ecfdf5', borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   addButtonText: { color: '#10b981', fontSize: 20, fontWeight: '900' },
   qtyContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#10b981', borderRadius: 20, padding: 4 },

@@ -58,6 +58,24 @@ export default function Layout() {
               >
                 <Text style={[styles.tabText, pathname === '/catalog' && styles.activeTabText]}>Catalog</Text>
               </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.tab, pathname === '/coupons' && styles.activeTab]} 
+                onPress={() => router.push('/coupons')}
+              >
+                <Text style={[styles.tabText, pathname === '/coupons' && styles.activeTabText]}>Coupons</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.tab, pathname === '/accounts' && styles.activeTab]} 
+                onPress={() => router.push('/accounts')}
+              >
+                <Text style={[styles.tabText, pathname === '/accounts' && styles.activeTabText]}>Khata</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.tab, pathname === '/reconciliation' && styles.activeTab]} 
+                onPress={() => router.push('/reconciliation')}
+              >
+                <Text style={[styles.tabText, pathname === '/reconciliation' && styles.activeTabText]}>Audit</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <Slot />
@@ -117,7 +135,7 @@ const styles = StyleSheet.create({
   textClosed: { color: '#b91c1c' },
   tabsContainer: {
     flexDirection: 'row',
-    gap: 24,
+    gap: 16,
   },
   tab: {
     paddingBottom: 12,

@@ -8,9 +8,20 @@ export default function Checkout() {
   const router = useRouter();
   const { cart, addToCart, decreaseQuantity, clearCart, user, setUser } = useStore();
   
-  const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => {
+    const price = item.product.discounted_price || item.product.price;
+    return sum + (price * item.quantity);
+  }, 0);
+  
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [deliveryInstructions, setDeliveryInstructions] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash or UPI
+
+  const discountAmount = appliedCoupon ? (cartTotal * appliedCoupon.discount_percentage / 100) : 0;
   const deliveryFee = cartTotal >= 100 ? 0 : 30;
-  const finalTotal = cartTotal + deliveryFee;
+  const finalTotal = (cartTotal - discountAmount) + deliveryFee + tipAmount;
 
   const [societies, setSocieties] = useState([]);
   const [formData, setFormData] = useState({
@@ -59,6 +70,21 @@ export default function Checkout() {
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    try {
+      const res = await api.get(`/coupons/${couponCode.toUpperCase()}`);
+      if (res.data.is_active) {
+        setAppliedCoupon(res.data);
+        Alert.alert("Success", `${res.data.discount_percentage}% discount applied!`);
+      } else {
+        Alert.alert("Error", "This coupon is no longer active.");
+      }
+    } catch (err) {
+      Alert.alert("Error", "Invalid coupon code.");
+    }
+  };
+
   const handleSubmit = async () => {
     if (cart.length === 0) return Alert.alert("Error", "Cart is empty");
     if (!formData.phone || !formData.name || !formData.society_id || !formData.flat_number) {
@@ -83,7 +109,14 @@ export default function Checkout() {
       });
 
       const items = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }));
-      await api.post(`/orders`, { user_id: userId, items });
+      await api.post(`/orders`, { 
+        user_id: userId, 
+        items,
+        tip_amount: tipAmount,
+        delivery_instructions: deliveryInstructions,
+        applied_coupon: appliedCoupon ? appliedCoupon.code : null,
+        payment_method: paymentMethod
+      });
       
       clearCart();
       router.push('/tracking');
@@ -189,6 +222,85 @@ export default function Checkout() {
         </View>
       </View>
 
+      {/* Coupons & Tipping */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Offers & Tipping</Text>
+        
+        {/* Coupon Section */}
+        <View style={styles.couponSection}>
+          <Text style={styles.label}>Apply Coupon</Text>
+          <View style={styles.couponRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Enter Code"
+              autoCapitalize="characters"
+              value={couponCode}
+              onChangeText={setCouponCode}
+              editable={!appliedCoupon}
+            />
+            {appliedCoupon ? (
+              <TouchableOpacity onPress={() => { setAppliedCoupon(null); setCouponCode(''); }} style={styles.appliedBadge}>
+                <Text style={styles.appliedBadgeText}>REMOVE</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={handleApplyCoupon} style={styles.applyBtn}>
+                <Text style={styles.applyBtnText}>APPLY</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {appliedCoupon && (
+            <Text style={styles.couponSuccess}>✓ Coupon {appliedCoupon.code} applied!</Text>
+          )}
+        </View>
+
+        {/* Tipping Section */}
+        <View style={styles.tipSection}>
+          <Text style={styles.label}>Add a Tip for the Rider</Text>
+          <View style={styles.tipOptions}>
+            {[10, 20, 50, 100].map(amt => (
+              <TouchableOpacity 
+                key={amt} 
+                onPress={() => setTipAmount(tipAmount === amt ? 0 : amt)}
+                style={[styles.tipBtn, tipAmount === amt && styles.tipBtnActive]}
+              >
+                <Text style={[styles.tipBtnText, tipAmount === amt && styles.tipBtnTextActive]}>₹{amt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Delivery Instructions</Text>
+        <TextInput
+          style={styles.instructionInput}
+          placeholder="e.g. Leave at the gate, ring the bell, etc."
+          multiline
+          numberOfLines={3}
+          value={deliveryInstructions}
+          onChangeText={setDeliveryInstructions}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Payment Method</Text>
+        <View style={styles.paymentOptions}>
+          {['Cash', 'UPI'].map(method => (
+            <TouchableOpacity 
+              key={method}
+              onPress={() => setPaymentMethod(method)}
+              style={[styles.paymentBtn, paymentMethod === method && styles.paymentBtnActive]}
+            >
+              <View style={[styles.radio, paymentMethod === method && styles.radioActive]}>
+                {paymentMethod === method && <View style={styles.radioInner} />}
+              </View>
+              <Text style={[styles.paymentBtnText, paymentMethod === method && styles.paymentBtnTextActive]}>{method}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.paymentHint}>Pay via {paymentMethod} on delivery</Text>
+      </View>
+
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Order Summary</Text>
         <View style={styles.cartList}>
@@ -216,6 +328,12 @@ export default function Checkout() {
             <Text style={styles.summaryLabel}>Item Total</Text>
             <Text style={styles.summaryValue}>₹{cartTotal.toFixed(2)}</Text>
           </View>
+          {appliedCoupon && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.discountLabel}>Coupon Discount ({appliedCoupon.discount_percentage}%)</Text>
+              <Text style={styles.discountValue}>-₹{discountAmount.toFixed(2)}</Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery Partner Fee</Text>
             {deliveryFee === 0 ? (
@@ -224,7 +342,13 @@ export default function Checkout() {
               <Text style={styles.summaryValue}>₹{deliveryFee.toFixed(2)}</Text>
             )}
           </View>
-          {deliveryFee > 0 && (
+          {tipAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Rider Tip</Text>
+              <Text style={styles.summaryValue}>₹{tipAmount.toFixed(2)}</Text>
+            </View>
+          )}
+          {deliveryFee > 0 && !appliedCoupon && (
             <View style={styles.deliveryPromo}>
               <Text style={styles.deliveryPromoText}>Add ₹{(100 - cartTotal).toFixed(2)} more for FREE Delivery!</Text>
             </View>
@@ -310,5 +434,30 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: '#10b981', padding: 20, borderRadius: 16 },
   submitButtonDisabled: { backgroundColor: '#cbd5e1' },
   submitButtonInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  submitButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' }
+  submitButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  couponSection: { marginBottom: 24 },
+  couponRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  applyBtn: { backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 },
+  applyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  appliedBadge: { backgroundColor: '#fef2f2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#fecaca' },
+  appliedBadgeText: { color: '#ef4444', fontWeight: 'black', fontSize: 10 },
+  couponSuccess: { color: '#059669', fontSize: 12, fontWeight: 'bold', marginTop: 8, marginLeft: 8 },
+  tipSection: { marginBottom: 8 },
+  tipOptions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  tipBtn: { flex: 1, backgroundColor: '#f8fafc', paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
+  tipBtnActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
+  tipBtnText: { fontWeight: 'bold', color: '#475569' },
+  tipBtnTextActive: { color: '#fff' },
+  instructionInput: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, fontSize: 14, fontWeight: '500', color: '#0f172a', borderWidth: 1, borderColor: '#e2e8f0', minHeight: 80, textAlignVertical: 'top' },
+  discountLabel: { fontSize: 14, fontWeight: 'bold', color: '#059669' },
+  discountValue: { fontSize: 14, fontWeight: 'bold', color: '#059669' },
+  paymentOptions: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  paymentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', gap: 12 },
+  paymentBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
+  paymentBtnText: { fontSize: 16, fontWeight: '900', color: '#475569' },
+  paymentBtnTextActive: { color: '#fff' },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#cbd5e1', justifyContent: 'center', alignItems: 'center' },
+  radioActive: { borderColor: '#fff' },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
+  paymentHint: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginTop: 12, marginLeft: 4 }
 });

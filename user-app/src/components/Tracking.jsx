@@ -181,6 +181,15 @@ export default function Tracking() {
                       Cancel Order
                     </button>
                   )}
+                  <button 
+                    onClick={() => {
+                      const msg = encodeURIComponent(`Hi JoyMart, I need help with my Order #${order.id}`);
+                      window.open(`https://wa.me/910000000000?text=${msg}`, '_blank');
+                    }}
+                    className="px-4 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl border border-emerald-200 hover:bg-emerald-100 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <span>💬</span> Help
+                  </button>
                 </div>
 
                 {order.status !== 'Cancelled' ? (
@@ -220,6 +229,31 @@ export default function Tracking() {
                         <span className="text-slate-900">₹{item.price_at_purchase * item.quantity}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <span>Items Subtotal</span>
+                      <span className="text-slate-900">₹{(order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0)).toFixed(2)}</span>
+                    </div>
+                    {order.applied_coupon && (
+                      <div className="flex justify-between text-sm font-bold text-emerald-600">
+                        <span>Coupon Discount</span>
+                        <span>-₹{(order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) - (order.total_amount - order.tip_amount - (order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? 0 : 30))).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <span>Delivery Fee</span>
+                      <span className="text-slate-900">₹{order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? '0.00' : '30.00'}</span>
+                    </div>
+                    {order.tip_amount > 0 && (
+                      <div className="flex justify-between text-sm font-bold text-slate-500">
+                        <span>Rider Tip</span>
+                        <span className="text-slate-900">₹{order.tip_amount.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

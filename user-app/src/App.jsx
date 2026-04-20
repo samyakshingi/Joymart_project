@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import Home from './components/Home';
 import Checkout from './components/Checkout';
 import Tracking from './components/Tracking';
+import Login from './components/Login';
+import { About, Privacy, Terms } from './components/Legal';
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -23,6 +25,7 @@ function App() {
   }); 
   const [isBumping, setIsBumping] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [userPhone, setUserPhone] = useState(() => localStorage.getItem('joymart_phone') || '');
 
   useEffect(() => {
     localStorage.setItem('joymart_cart', JSON.stringify(cart));
@@ -80,7 +83,10 @@ function App() {
 
   const clearCart = () => setCart([]);
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => {
+    const price = item.product.discounted_price || item.product.price;
+    return sum + (price * item.quantity);
+  }, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -124,11 +130,30 @@ function App() {
 
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8">
           <Routes>
-            <Route path="/" element={<Home addToCart={addToCart} decreaseQuantity={decreaseQuantity} cart={cart} />} />
-            <Route path="/checkout" element={<Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} />} />
-            <Route path="/tracking" element={<Tracking />} />
+            <Route path="/login" element={<Login onLogin={(p) => { setUserPhone(p); window.location.href='/'; }} />} />
+            <Route path="/" element={userPhone ? <Home addToCart={addToCart} decreaseQuantity={decreaseQuantity} cart={cart} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/checkout" element={userPhone ? <Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/tracking" element={userPhone ? <Tracking /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
           </Routes>
         </main>
+
+        <footer className="bg-white border-t border-slate-100 py-12 px-4">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xs">J</div>
+              <span className="font-black text-slate-900 text-xl tracking-tighter">JoyMart</span>
+            </div>
+            <div className="flex gap-8 text-sm font-bold text-slate-400">
+              <Link to="/about" className="hover:text-emerald-600 transition-colors">About Us</Link>
+              <Link to="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
+            </div>
+            <p className="text-sm font-bold text-slate-300">© 2026 JoyMart Technologies</p>
+          </div>
+        </footer>
       </div>
     </Router>
   );

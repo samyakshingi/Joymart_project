@@ -14,6 +14,7 @@ class UserCreate(BaseModel):
     flat_number: str
     phone: str
     name: str
+    firebase_token: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: int
@@ -27,6 +28,7 @@ class UserResponse(BaseModel):
 class ProductBase(BaseModel):
     name: str
     price: float
+    discounted_price: Optional[float] = None
     is_available: bool = True
     image_url: Optional[str] = None
     category: str
@@ -36,6 +38,19 @@ class ProductCreate(ProductBase):
     pass
 
 class ProductResponse(ProductBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Coupon Schemas ---
+class CouponBase(BaseModel):
+    code: str
+    discount_percentage: int
+    is_active: bool = True
+
+class CouponCreate(CouponBase):
+    pass
+
+class CouponResponse(CouponBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,12 +71,20 @@ class OrderItemResponse(BaseModel):
 class OrderCreate(BaseModel):
     user_id: int
     items: List[OrderItemCreate]
+    tip_amount: float = 0
+    delivery_instructions: Optional[str] = None
+    applied_coupon: Optional[str] = None
+    payment_method: str  # Mandatory: 'Cash' or 'UPI'
 
 class OrderResponse(BaseModel):
     id: int
     user_id: int
     order_date: datetime
     total_amount: float
+    tip_amount: float
+    delivery_instructions: Optional[str] = None
+    applied_coupon: Optional[str] = None
+    payment_method: str
     status: str
     items: List[OrderItemResponse] = []
     model_config = ConfigDict(from_attributes=True)
@@ -72,4 +95,31 @@ class OrderStatusUpdate(BaseModel):
 # --- Store Schemas ---
 class StoreSettingResponse(BaseModel):
     is_open: bool
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Supplier Schemas ---
+class SupplierBase(BaseModel):
+    name: str
+    phone: str
+    outstanding_balance: float = 0
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierResponse(SupplierBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class SupplierTransactionCreate(BaseModel):
+    amount: float
+    transaction_type: str # Invoice, Payment
+    description: Optional[str] = None
+
+class SupplierTransactionResponse(BaseModel):
+    id: int
+    supplier_id: int
+    amount: float
+    transaction_type: str
+    date: datetime
+    description: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)

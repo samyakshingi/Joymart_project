@@ -75,7 +75,16 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">{product.category}</p>
           </div>
           <div className="flex items-center justify-between mt-auto">
-            <p className="font-black text-slate-900 text-lg">₹{product.price}</p>
+            <div className="flex flex-col">
+              {product.discounted_price ? (
+                <>
+                  <span className="text-xs text-slate-400 line-through">₹{product.price}</span>
+                  <span className="font-black text-slate-900 text-lg leading-none">₹{product.discounted_price}</span>
+                </>
+              ) : (
+                <span className="font-black text-slate-900 text-lg">₹{product.price}</span>
+              )}
+            </div>
             {qty === 0 ? (
               <button onClick={() => addToCart(product)} className="w-10 h-10 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center font-black transition-all shadow-sm hover:shadow-emerald-500/30">
                 +
