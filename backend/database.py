@@ -2,8 +2,9 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# For development and testing without spinning up Postgres immediately, we will default to SQLite.
-# When you're ready for production, we will set DATABASE_URL="postgresql://user:password@localhost/joymart"
+# Production Database Configuration
+# NOTE: When deploying to Neon, use the connection string with '-pool' for efficient connection pooling.
+# Example: DATABASE_URL="postgresql://user:password@ep-cool-pool-123456-pool.us-east-2.aws.neon.tech/joymart"
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./joymart.db")
 
 # SQLite requires "check_same_thread": False, Postgres doesn't

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './api';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './components/Home';
 import Checkout from './components/Checkout';
@@ -30,7 +30,7 @@ function App() {
 
   useEffect(() => {
     const fetchStatus = () => {
-      axios.get('http://localhost:8000/store/status')
+      api.get('/store/status')
         .then(res => setIsStoreOpen(res.data.is_open))
         .catch(err => console.error(err));
     };

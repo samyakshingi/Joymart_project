@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8000';
+import api from '../api';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
@@ -16,7 +14,7 @@ export default function Catalog() {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_URL}/products`);
+      const response = await api.get('/products');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -29,7 +27,7 @@ export default function Catalog() {
 
   const toggleAvailability = async (product) => {
     try {
-      await axios.put(`${API_URL}/products/${product.id}/availability?is_available=${!product.is_available}`);
+      await api.put(`/products/${product.id}/availability?is_available=${!product.is_available}`);
       fetchProducts();
     } catch (error) {
       console.error('Error toggling availability:', error);
@@ -38,7 +36,7 @@ export default function Catalog() {
 
   const updateStock = async (product, newStockCount) => {
     try {
-      await axios.put(`${API_URL}/products/${product.id}/stock?stock_count=${newStockCount}`);
+      await api.put(`/products/${product.id}/stock?stock_count=${newStockCount}`);
       fetchProducts();
     } catch (error) {
       console.error('Error updating stock:', error);
@@ -49,7 +47,7 @@ export default function Catalog() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.post(`${API_URL}/products`, {
+      await api.post('/products', {
         ...newProduct,
         price: parseFloat(newProduct.price),
         stock_count: parseInt(newProduct.stock_count) || 0

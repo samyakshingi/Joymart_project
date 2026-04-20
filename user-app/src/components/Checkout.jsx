@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-
-const API_URL = 'http://localhost:8000';
 
 export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen }) {
   const navigate = useNavigate();
@@ -21,7 +19,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
   useEffect(() => {
     const fetchSocieties = async () => {
       try {
-        const res = await axios.get(`${API_URL}/societies`);
+        const res = await api.get('/societies');
         setSocieties(res.data);
       } catch (err) { console.error(err); }
     };
@@ -34,7 +32,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
     setIsSubmitting(true);
 
     try {
-      const userRes = await axios.post(`${API_URL}/users`, {
+      const userRes = await api.post('/users', {
         phone: formData.phone,
         name: formData.name,
         society_id: parseInt(formData.society_id),
@@ -43,7 +41,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       const userId = userRes.data.id;
 
       const items = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }));
-      await axios.post(`${API_URL}/orders`, { user_id: userId, items });
+      await api.post('/orders', { user_id: userId, items });
       
       localStorage.setItem('joymart_phone', formData.phone);
       clearCart();
@@ -96,7 +94,7 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                     setFormData({...formData, phone: value});
                     if (value.length === 10) {
                       try {
-                        const res = await axios.get(`${API_URL}/users/${value}`);
+                        const res = await api.get(`/users/${value}`);
                         if (res.data) {
                           setFormData(prev => ({
                             ...prev,

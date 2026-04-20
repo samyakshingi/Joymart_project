@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8000';
+import api from '../api';
 
 export default function Home({ addToCart, decreaseQuantity, cart }) {
   const [products, setProducts] = useState([]);
@@ -15,7 +13,7 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get(`${API_URL}/products`);
+        const response = await api.get(`/products`);
         const available = response.data.filter(p => p.is_available);
         
         const grouped = available.reduce((acc, product) => {
@@ -30,13 +28,13 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
         const savedPhone = localStorage.getItem('joymart_phone');
         if (savedPhone) {
           try {
-            const freqRes = await axios.get(`${API_URL}/orders/frequent/${savedPhone}`);
+            const freqRes = await api.get(`/orders/frequent/${savedPhone}`);
             setFrequentProducts(freqRes.data.filter(p => p.is_available));
           } catch(err) {}
         }
 
         try {
-          const trendRes = await axios.get(`${API_URL}/products/trending`);
+          const trendRes = await api.get(`/products/trending`);
           setTrendingProducts(trendRes.data.filter(p => p.is_available));
         } catch(err) {}
       } catch (error) {

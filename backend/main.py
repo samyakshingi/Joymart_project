@@ -5,19 +5,34 @@ from sqlalchemy import func
 from typing import List
 import datetime
 
+import logging
+import os
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 import models
 import schemas
 from database import engine, get_db
 
-# Create all tables in the database (SQLite for our POC)
+# Create all tables in the database
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="JoyMart API")
 
-# Allow frontend requests
+# CORS Configuration
+# For production, we would list the specific Vercel domains. 
+# For now, allowing all origins is acceptable for the POC, but let's prepare for more control.
+origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "*", # Allow mobile apps and Vercel builds
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8000';
+import api from '../api';
 
 export default function Tracking() {
   const [phone, setPhone] = useState('');
@@ -16,7 +14,7 @@ export default function Tracking() {
     if (savedPhone) {
       setPhone(savedPhone);
       setIsLoading(true);
-      axios.get(`${API_URL}/orders/tracking/${savedPhone}`)
+      api.get(`/orders/tracking/${savedPhone}`)
         .then(res => {
           setOrders(res.data);
           setHasSearched(true);
@@ -40,7 +38,7 @@ export default function Tracking() {
     let intervalId;
     if (hasSearched && phone) {
       intervalId = setInterval(() => {
-        axios.get(`${API_URL}/orders/tracking/${phone}`)
+        api.get(`/orders/tracking/${phone}`)
           .then(res => {
              setOrders(prevOrders => {
                const newOrders = res.data;
@@ -69,7 +67,7 @@ export default function Tracking() {
     setIsLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API_URL}/orders/tracking/${phone}`);
+      const res = await api.get(`/orders/tracking/${phone}`);
       setOrders(res.data);
       setHasSearched(true);
     } catch (err) {
@@ -170,8 +168,8 @@ export default function Tracking() {
                       onClick={async () => {
                         if (window.confirm("Are you sure you want to cancel this order?")) {
                           try {
-                            await axios.put(`${API_URL}/orders/${order.id}/cancel`);
-                            const res = await axios.get(`${API_URL}/orders/tracking/${phone}`);
+                            await api.put(`/orders/${order.id}/cancel`);
+                            const res = await api.get(`/orders/tracking/${phone}`);
                             setOrders(res.data);
                           } catch (err) {
                             alert("Failed to cancel order.");

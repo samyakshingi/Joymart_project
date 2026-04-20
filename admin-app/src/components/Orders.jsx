@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8000';
+import api from '../api';
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -9,10 +7,10 @@ export default function Orders() {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API_URL}/orders`);
+      const response = await api.get('/orders');
       setOrders(response.data);
       
-      const statRes = await axios.get(`${API_URL}/analytics/today`);
+      const statRes = await api.get('/analytics/today');
       setAnalytics(statRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -27,7 +25,7 @@ export default function Orders() {
 
   const updateStatus = async (orderId, newStatus) => {
     try {
-      await axios.put(`${API_URL}/orders/${orderId}/status`, { status: newStatus });
+      await api.put(`/orders/${orderId}/status`, { status: newStatus });
       fetchOrders();
     } catch (error) {
       console.error('Error updating status:', error);

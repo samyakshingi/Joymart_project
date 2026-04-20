@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './api';
 import Orders from './components/Orders';
 import Catalog from './components/Catalog';
-
-const API_URL = 'http://localhost:8000';
 
 function App() {
   const [activeTab, setActiveTab] = useState('orders');
   const [isStoreOpen, setIsStoreOpen] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API_URL}/store/status`)
+    api.get('/store/status')
       .then(res => setIsStoreOpen(res.data.is_open))
       .catch(err => console.error(err));
   }, []);
 
   const toggleStoreStatus = async () => {
     try {
-      const res = await axios.put(`${API_URL}/store/status?is_open=${!isStoreOpen}`);
+      const res = await api.put(`/store/status?is_open=${!isStoreOpen}`);
       setIsStoreOpen(res.data.is_open);
     } catch (err) {
       console.error(err);
