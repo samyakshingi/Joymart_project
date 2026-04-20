@@ -200,7 +200,13 @@ export default function Catalog() {
 
                 <TouchableOpacity 
                   onPress={() => {
-                    setEditingProduct({...product, price: product.price.toString(), discounted_price: product.discounted_price ? product.discounted_price.toString() : '', stock_count: product.stock_count.toString()});
+                    setEditingProduct({
+                      ...product, 
+                      price: product.price.toString(), 
+                      discounted_price: product.discounted_price ? product.discounted_price.toString() : '', 
+                      stock_count: product.stock_count.toString(),
+                      image_url: product.image_url || ''
+                    });
                     setIsEditModalVisible(true);
                   }}
                   style={styles.editLink}
@@ -259,6 +265,10 @@ export default function Catalog() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Stock Count</Text>
                   <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.stock_count} onChangeText={(v) => setEditingProduct({...editingProduct, stock_count: v})} />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Image URL</Text>
+                  <TextInput style={styles.input} value={editingProduct.image_url} onChangeText={(v) => setEditingProduct({...editingProduct, image_url: v})} placeholder="https://example.com/image.png" />
                 </View>
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setIsEditModalVisible(false)}>

@@ -172,8 +172,8 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
+              <div className="flex flex-col lg:flex-row gap-8">
+                <div className="flex-1 space-y-4">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Apply Coupon</label>
                   <div className="flex gap-2">
                     <input 
@@ -182,26 +182,26 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                       value={couponCode} 
                       onChange={e => setCouponCode(e.target.value)}
                       disabled={!!appliedCoupon}
-                      className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-black text-slate-900 uppercase tracking-widest disabled:opacity-50"
+                      className="flex-1 min-w-[120px] bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-black text-slate-900 uppercase tracking-widest disabled:opacity-50"
                     />
                     {appliedCoupon ? (
-                      <button type="button" onClick={() => {setAppliedCoupon(null); setCouponCode('');}} className="px-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 border border-red-100 text-xs transition-colors">REMOVE</button>
+                      <button type="button" onClick={() => {setAppliedCoupon(null); setCouponCode('');}} className="px-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 border border-red-100 text-xs transition-colors shrink-0">REMOVE</button>
                     ) : (
-                      <button type="button" onClick={handleApplyCoupon} className="px-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-colors text-xs">APPLY</button>
+                      <button type="button" onClick={handleApplyCoupon} className="px-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-colors text-xs shrink-0">APPLY</button>
                     )}
                   </div>
                   {appliedCoupon && <p className="text-xs font-bold text-emerald-600 pl-2">✓ Coupon applied successfully!</p>}
                 </div>
 
-                <div className="space-y-4">
+                <div className="flex-1 space-y-4">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">Rider Tip</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {[10, 20, 50, 100].map(amt => (
                       <button 
                         key={amt}
                         type="button"
                         onClick={() => setTipAmount(tipAmount === amt ? 0 : amt)}
-                        className={`flex-1 py-3 rounded-2xl font-black text-sm transition-all border-2 ${tipAmount === amt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'}`}
+                        className={`min-w-[60px] flex-1 py-3 rounded-2xl font-black text-sm transition-all border-2 ${tipAmount === amt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'}`}
                       >
                         ₹{amt}
                       </button>

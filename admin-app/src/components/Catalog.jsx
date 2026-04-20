@@ -178,7 +178,13 @@ export default function Catalog() {
                   </div>
                   
                   <button 
-                    onClick={() => setEditingProduct({...product, price: product.price.toString(), discounted_price: product.discounted_price ? product.discounted_price.toString() : '', stock_count: product.stock_count.toString()})}
+                    onClick={() => setEditingProduct({
+                      ...product, 
+                      price: product.price.toString(), 
+                      discounted_price: product.discounted_price ? product.discounted_price.toString() : '', 
+                      stock_count: product.stock_count.toString(),
+                      image_url: product.image_url || ''
+                    })}
                     className="text-blue-600 text-xs font-bold hover:underline mb-4 text-left"
                   >
                     ✎ Edit Details
@@ -241,6 +247,10 @@ export default function Catalog() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Stock Count</label>
                   <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Image URL</label>
+                  <input type="text" value={editingProduct.image_url} onChange={(e) => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="https://example.com/image.png" />
                 </div>
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
