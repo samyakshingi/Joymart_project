@@ -28,16 +28,11 @@ app = FastAPI(title="JoyMart API")
 # CORS Configuration
 # For production, we would list the specific Vercel domains. 
 # For now, allowing all origins is acceptable for the POC, but let's prepare for more control.
-origins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "*", # Allow mobile apps and Vercel builds
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False, # Changed to False to allow "*" origins safely
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -76,9 +76,17 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       clearCart();
       navigate('/tracking');
     } catch (err) {
-      console.error(err);
-      const errorMsg = err.response?.data?.detail || "Failed to place order. Please try again.";
-      alert(errorMsg);
+      console.error("Checkout error:", err);
+      if (err.response) {
+        // Server returned an error
+        const errorMsg = err.response.data?.detail || "Server error. Please try again.";
+        alert(`Order Failed: ${errorMsg}`);
+      } else if (err.request) {
+        // Request made but no response (Network error)
+        alert("Network Error: Could not connect to the server. Please check your internet or API configuration.");
+      } else {
+        alert("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
