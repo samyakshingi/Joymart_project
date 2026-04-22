@@ -77,7 +77,8 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       navigate('/tracking');
     } catch (err) {
       console.error(err);
-      alert("Failed to place order.");
+      const errorMsg = err.response?.data?.detail || "Failed to place order. Please try again.";
+      alert(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
