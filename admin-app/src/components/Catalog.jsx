@@ -77,6 +77,18 @@ export default function Catalog() {
     }
   };
 
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await api.delete(`/products/${productId}`);
+      setEditingProduct(null);
+      fetchProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert(error.response?.data?.detail || "Failed to delete product.");
+    }
+  };
+
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -276,15 +288,22 @@ export default function Catalog() {
                     <input type="number" step="0.01" value={editingProduct.discounted_price} onChange={(e) => setEditingProduct({...editingProduct, discounted_price: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-700">Stock Count</label>
-                  <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Stock Count</label>
+                    <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Category</label>
+                    <input required type="text" value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Image URL</label>
                   <input type="text" value={editingProduct.image_url} onChange={(e) => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" placeholder="https://example.com/image.png" />
                 </div>
                 <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => handleDeleteProduct(editingProduct.id)} className="px-6 py-3 rounded-xl font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors">Delete</button>
                   <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
                   <button type="submit" className="flex-1 px-6 py-3 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all">Save Changes</button>
                 </div>

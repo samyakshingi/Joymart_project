@@ -164,6 +164,21 @@ def update_product(product_id: int, product_update: schemas.ProductCreate, db: S
     db.refresh(db_product)
     return db_product
 
+@app.delete("/products/{product_id}")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Check if product is in any orders
+    in_orders = db.query(models.OrderItem).filter(models.OrderItem.product_id == product_id).first()
+    if in_orders:
+        raise HTTPException(status_code=400, detail="Cannot delete product because it has been ordered in the past. Try marking it out of stock instead.")
+        
+    db.delete(db_product)
+    db.commit()
+    return {"message": "Product deleted successfully"}
+
 # --- COUPON ENDPOINTS ---
 @app.get("/coupons", response_model=List[schemas.CouponResponse])
 def get_all_coupons(db: Session = Depends(get_db)):
