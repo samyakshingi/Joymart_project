@@ -13,6 +13,18 @@ export default function Catalog() {
   });
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const categoriesMap = filteredProducts.reduce((acc, product) => {
+    if (!acc[product.category]) acc[product.category] = [];
+    acc[product.category].push(product);
+    return acc;
+  }, {});
 
   const fetchProducts = async () => {
     try {
@@ -128,22 +140,39 @@ export default function Catalog() {
 
       {/* Product Grid */}
       <div>
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-2xl font-bold text-slate-800">Store Catalog</h2>
-          <span className="bg-slate-100 text-slate-600 font-medium px-3 py-1 rounded-full text-sm">
-            {products.length} Products Total
-          </span>
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <input 
+              type="text" 
+              placeholder="Search catalog..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 sm:w-64 rounded-xl border-slate-200 bg-white px-4 py-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-all"
+            />
+            <span className="bg-slate-100 text-slate-600 font-medium px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+              {filteredProducts.length} Products
+            </span>
+          </div>
         </div>
         
-        {products.length === 0 ? (
+        {Object.keys(categoriesMap).length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-            <p className="text-lg text-slate-500 font-medium">Your catalog is empty.</p>
-            <p className="text-sm text-slate-400 mt-2">Add your first product above!</p>
+            <p className="text-lg text-slate-500 font-medium">No products found.</p>
+            <p className="text-sm text-slate-400 mt-2">Try adjusting your search or add a product above!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div key={product.id} className={`group bg-white rounded-2xl border ${product.is_available ? 'border-slate-200' : 'border-red-200 bg-slate-50/50'} shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300`}>
+          <div className="space-y-12">
+            {Object.entries(categoriesMap).map(([category, catProducts]) => (
+              <div key={category} className="animate-fade-in">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
+                  <span className="w-2 h-6 bg-emerald-400 rounded-full"></span>
+                  {category}
+                  <span className="text-sm font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">{catProducts.length}</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {catProducts.map((product) => (
+                    <div key={product.id} className={`group bg-white rounded-2xl border ${product.is_available ? 'border-slate-200' : 'border-red-200 bg-slate-50/50'} shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300`}>
                 <div className="h-48 bg-slate-100/80 flex items-center justify-center p-6 relative">
                   {!product.is_available && (
                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center z-10">
@@ -216,6 +245,9 @@ export default function Catalog() {
                   >
                     {product.is_available ? 'Mark as Out of Stock' : 'Mark as Available'}
                   </button>
+                </div>
+              </div>
+                  ))}
                 </div>
               </div>
             ))}
