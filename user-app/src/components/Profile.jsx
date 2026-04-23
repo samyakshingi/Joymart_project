@@ -6,6 +6,7 @@ export default function Profile({ userPhone, onLogout }) {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -81,7 +82,7 @@ export default function Profile({ userPhone, onLogout }) {
         ) : (
           <div className="space-y-4">
             {orders.map(order => (
-              <div key={order.id} className="p-5 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-colors bg-white flex flex-col sm:flex-row justify-between sm:items-center gap-4 group cursor-pointer">
+              <div key={order.id} onClick={() => setSelectedOrder(order)} className="p-5 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-colors bg-white flex flex-col sm:flex-row justify-between sm:items-center gap-4 group cursor-pointer shadow-sm hover:shadow-md">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <span className="font-black text-slate-900">Order #{order.id}</span>
@@ -109,6 +110,80 @@ export default function Profile({ userPhone, onLogout }) {
           </div>
         )}
       </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 relative">
+              <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+              <div>
+                <h3 className="font-black text-xl text-slate-900">Order #{selectedOrder.id}</h3>
+                <p className="text-xs font-bold text-slate-500 mt-1">{new Date(selectedOrder.order_date).toLocaleString('en-IN')}</p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors font-bold">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto hide-scrollbar space-y-6">
+              <div>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Items</h4>
+                <div className="space-y-3">
+                  {selectedOrder.items.map(item => (
+                    <div key={item.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200">
+                          {item.product?.image_url ? <img src={item.product.image_url} className="w-8 h-8 object-contain" alt="" /> : <span className="text-slate-300 font-black">?</span>}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-900 line-clamp-1">{item.product?.name || 'Unknown Product'}</p>
+                          <p className="text-xs font-bold text-slate-500">{item.quantity} × ₹{item.price_at_purchase}</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-slate-900">₹{(item.price_at_purchase * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedOrder.delivery_instructions && (
+                <div>
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Instructions</h4>
+                  <p className="bg-amber-50 border border-amber-100 text-amber-800 text-sm font-bold p-4 rounded-xl">{selectedOrder.delivery_instructions}</p>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Bill Summary</h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-sm font-bold">
+                  {selectedOrder.applied_coupon && (
+                    <div className="flex justify-between text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                      <span>Coupon Applied</span>
+                      <span className="uppercase tracking-widest text-[10px] bg-emerald-200 px-1.5 py-0.5 rounded">{selectedOrder.applied_coupon}</span>
+                    </div>
+                  )}
+                  {selectedOrder.tip_amount > 0 && (
+                    <div className="flex justify-between text-slate-600 px-2">
+                      <span>Rider Tip</span>
+                      <span>₹{selectedOrder.tip_amount}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg text-slate-900 px-2 pt-2 border-t border-slate-200 mt-2">
+                    <span className="font-black">Total Paid</span>
+                    <span className="font-black">₹{selectedOrder.total_amount}</span>
+                  </div>
+                  <div className="text-[10px] text-center text-slate-400 uppercase tracking-widest mt-2">
+                    Paid via {selectedOrder.payment_method}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+              <button onClick={() => setSelectedOrder(null)} className="w-full py-3 bg-slate-900 text-white font-black rounded-xl hover:bg-slate-800 transition-colors shadow-md hover:-translate-y-0.5">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
