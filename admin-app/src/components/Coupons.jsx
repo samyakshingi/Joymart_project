@@ -22,14 +22,15 @@ export default function Coupons() {
     fetchCoupons();
   }, []);
 
-  const handleDeleteCoupon = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this coupon?")) return;
+  const handleToggleStatus = async (id, currentStatus) => {
+    const action = currentStatus ? "deactivate" : "activate";
+    if (!window.confirm(`Are you sure you want to ${action} this coupon?`)) return;
     try {
-      await api.delete(`/coupons/${id}`);
+      await api.put(`/coupons/${id}/toggle_status`);
       fetchCoupons();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete coupon.");
+      alert(`Failed to ${action} coupon.`);
     }
   };
 
@@ -120,7 +121,7 @@ export default function Coupons() {
                   <span className="font-black text-emerald-900 text-lg">{c.code}</span>
                   <span className="ml-3 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
                 </div>
-                <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-red-200">Delete</button>
+                <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-amber-600 hover:text-amber-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-amber-200 transition-colors">Deactivate</button>
               </div>
             ))
           )}
@@ -140,7 +141,7 @@ export default function Coupons() {
                   <span className="font-black text-slate-500 text-lg line-through decoration-slate-300">{c.code}</span>
                   <span className="ml-3 bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
                 </div>
-                <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-red-200">Delete</button>
+                <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-emerald-600 hover:text-emerald-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors">Activate</button>
               </div>
             ))
           )}

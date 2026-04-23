@@ -170,14 +170,15 @@ def get_coupon(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Invalid or inactive coupon code")
     return coupon
 
-@app.delete("/coupons/{coupon_id}")
-def delete_coupon(coupon_id: int, db: Session = Depends(get_db)):
+@app.put("/coupons/{coupon_id}/toggle_status", response_model=schemas.CouponResponse)
+def toggle_coupon_status(coupon_id: int, db: Session = Depends(get_db)):
     coupon = db.query(models.Coupon).filter(models.Coupon.id == coupon_id).first()
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
-    db.delete(coupon)
+    coupon.is_active = not coupon.is_active
     db.commit()
-    return {"message": "Coupon deleted successfully"}
+    db.refresh(coupon)
+    return coupon
 
 @app.post("/coupons", response_model=schemas.CouponResponse)
 def create_coupon(coupon: schemas.CouponCreate, db: Session = Depends(get_db)):
