@@ -70,17 +70,16 @@ def get_societies(db: Session = Depends(get_db)):
 
 # --- USER ENDPOINTS ---
 @app.post("/users", response_model=schemas.UserResponse)
-def get_or_create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_or_update_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.phone == user.phone).first()
     if db_user:
-        # Update details if changed
         db_user.name = user.name
         db_user.flat_number = user.flat_number
         db_user.society_id = user.society_id
         db.commit()
         db.refresh(db_user)
         return db_user
-    
+        
     db_user = models.User(**user.model_dump())
     db.add(db_user)
     db.commit()
@@ -93,6 +92,13 @@ def get_user_by_phone(phone: str, db: Session = Depends(get_db)):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+@app.get("/users/{phone}/orders", response_model=List[schemas.OrderResponse])
+def get_user_orders(phone: str, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.phone == phone).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db.query(models.Order).filter(models.Order.user_id == db_user.id).order_by(models.Order.order_date.desc()).all()
 
 # --- PRODUCT ENDPOINTS ---
 @app.get("/products", response_model=List[schemas.ProductResponse])
@@ -241,7 +247,11 @@ def create_order(order_req: schemas.OrderCreate, db: Session = Depends(get_db)):
     if order_req.applied_coupon:
         coupon = db.query(models.Coupon).filter(models.Coupon.code == order_req.applied_coupon, models.Coupon.is_active == True).first()
         if coupon:
-            discount = (total_amount * coupon.discount_percentage) / 100
+            if coupon.once_per_user:
+                past_order = db.query(models.Order).filter(models.Order.user_id == order_req.user_id, models.Order.applied_coupon == order_req.applied_coupon).first()
+                if past_order:
+                    raise HTTPException(status_code=400, detail="You have already used this coupon code.")
+            discount = (total_amount * float(coupon.discount_percentage)) / 100
     
     # Calculate final total
     final_total = total_amount - discount

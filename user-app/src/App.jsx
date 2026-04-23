@@ -5,6 +5,7 @@ import Home from './components/Home';
 import Checkout from './components/Checkout';
 import Tracking from './components/Tracking';
 import Login from './components/Login';
+import Profile from './components/Profile';
 import { About, Privacy, Terms } from './components/Legal';
 
 // Scroll to top on route change
@@ -89,6 +90,12 @@ function App() {
   }, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const handleLogout = () => {
+    localStorage.removeItem('joymart_phone');
+    setUserPhone('');
+    window.location.href = '/';
+  };
+
   return (
     <Router>
       <ScrollToTop />
@@ -110,6 +117,12 @@ function App() {
                 </span>
               </Link>
               <div className="flex items-center space-x-4 sm:space-x-8">
+                {userPhone && (
+                  <Link to="/profile" className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors">
+                    <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <span className="text-sm font-bold hidden sm:block">Account</span>
+                  </Link>
+                )}
                 <Link to="/tracking" className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors bg-slate-100 sm:bg-transparent p-2.5 sm:p-0 rounded-2xl sm:rounded-none">
                   <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                   <span className="text-sm font-bold hidden sm:block">Track Order</span>
@@ -132,8 +145,9 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login onLogin={(p) => { setUserPhone(p); window.location.href='/'; }} />} />
             <Route path="/" element={userPhone ? <Home addToCart={addToCart} decreaseQuantity={decreaseQuantity} cart={cart} /> : <Login onLogin={setUserPhone} />} />
-            <Route path="/checkout" element={userPhone ? <Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/checkout" element={userPhone ? <Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} userPhone={userPhone} /> : <Login onLogin={setUserPhone} />} />
             <Route path="/tracking" element={userPhone ? <Tracking /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/profile" element={userPhone ? <Profile userPhone={userPhone} onLogout={handleLogout} /> : <Login onLogin={setUserPhone} />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />

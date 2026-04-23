@@ -66,6 +66,7 @@ class Coupon(Base):
     code = Column(String, unique=True, index=True)
     discount_percentage = Column(Integer)
     is_active = Column(Boolean, default=True)
+    once_per_user = Column(Boolean, default=False)
 
 class Supplier(Base):
     __tablename__ = "suppliers"

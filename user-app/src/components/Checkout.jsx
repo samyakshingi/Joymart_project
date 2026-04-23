@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
 
-export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen }) {
+export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen, userPhone }) {
   const navigate = useNavigate();
 
   const [couponCode, setCouponCode] = useState('');
@@ -33,6 +33,24 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
     };
     fetchSocieties();
   }, []);
+
+  useEffect(() => {
+    if (userPhone) {
+      setFormData(prev => ({ ...prev, phone: userPhone }));
+      api.get(`/users/${userPhone}`)
+        .then(res => {
+          if (res.data) {
+            setFormData(prev => ({
+              ...prev,
+              name: res.data.name || prev.name,
+              society_id: res.data.society_id || prev.society_id,
+              flat_number: res.data.flat_number || prev.flat_number
+            }));
+          }
+        })
+        .catch(err => console.log("User details not found for auto-populate"));
+    }
+  }, [userPhone]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
@@ -119,36 +137,19 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
           
           <form id="checkout-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-x-6 gap-y-8">
-              <div className="col-span-2 space-y-2 relative">
-                <input 
-                  required 
-                  id="phone" 
-                  type="tel" 
-                  pattern="[0-9]{10}" 
-                  placeholder=" " 
-                  value={formData.phone} 
-                  onChange={async (e) => {
-                    const value = e.target.value;
-                    setFormData({...formData, phone: value});
-                    if (value.length === 10) {
-                      try {
-                        const res = await api.get(`/users/${value}`);
-                        if (res.data) {
-                          setFormData(prev => ({
-                            ...prev,
-                            phone: value,
-                            name: res.data.name || prev.name,
-                            society_id: res.data.society_id || prev.society_id,
-                            flat_number: res.data.flat_number || prev.flat_number
-                          }));
-                        }
-                      } catch (err) {}
-                    }
-                  }} 
-                  className="peer w-full bg-transparent border-b-2 border-slate-200 px-2 py-3 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-xl" 
-                />
-                <label htmlFor="phone" className="absolute left-2 -top-3.5 text-xs font-black text-slate-400 uppercase tracking-widest transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3 peer-focus:-top-3.5 peer-focus:text-xs peer-focus:text-emerald-500 pointer-events-none">10-Digit Mobile Number</label>
-              </div>
+                <div className="col-span-2 space-y-2 relative">
+                  <input 
+                    required 
+                    id="phone" 
+                    type="tel" 
+                    pattern="[0-9]{10}" 
+                    placeholder=" " 
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="peer w-full bg-transparent border-b-2 border-slate-200 px-2 py-3 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-xl" 
+                  />
+                  <label htmlFor="phone" className="absolute left-2 -top-3.5 text-xs font-black text-slate-400 uppercase tracking-widest transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3 peer-focus:-top-3.5 peer-focus:text-xs peer-focus:text-emerald-500 pointer-events-none">10-Digit Mobile Number</label>
+                </div>
               
               <div className="col-span-2 space-y-2 relative">
                 <input required id="name" type="text" placeholder=" " value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="peer w-full bg-transparent border-b-2 border-slate-200 px-2 py-3 focus:border-emerald-500 outline-none transition-all font-bold text-slate-900 text-xl" />

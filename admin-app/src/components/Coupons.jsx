@@ -6,6 +6,7 @@ export default function Coupons() {
   const [newCoupon, setNewCoupon] = useState({
     code: '',
     discount_percentage: '',
+    once_per_user: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,9 +44,10 @@ export default function Coupons() {
       await api.post('/coupons', {
         code: newCoupon.code.toUpperCase(),
         discount_percentage: parseInt(newCoupon.discount_percentage),
+        once_per_user: newCoupon.once_per_user,
         is_active: true
       });
-      setNewCoupon({ code: '', discount_percentage: '' });
+      setNewCoupon({ code: '', discount_percentage: '', once_per_user: false });
       fetchCoupons();
       alert("Coupon created successfully!");
     } catch (error) {
@@ -89,6 +91,11 @@ export default function Coupons() {
             />
           </div>
           
+          <div className="flex items-center gap-3 ml-2 mt-4">
+            <input type="checkbox" id="once_per_user" checked={newCoupon.once_per_user} onChange={e => setNewCoupon({...newCoupon, once_per_user: e.target.checked})} className="w-5 h-5 rounded text-blue-500 focus:ring-blue-500 bg-slate-100 border-slate-300" />
+            <label htmlFor="once_per_user" className="text-sm font-bold text-slate-600">Valid Once Per User Only</label>
+          </div>
+          
           <button 
             type="submit" 
             disabled={isSubmitting}
@@ -118,8 +125,11 @@ export default function Coupons() {
             coupons.filter(c => c.is_active).map(c => (
               <div key={c.id} className="flex justify-between items-center p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                 <div>
-                  <span className="font-black text-emerald-900 text-lg">{c.code}</span>
-                  <span className="ml-3 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-emerald-900 text-lg">{c.code}</span>
+                    {c.once_per_user && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">1-Time</span>}
+                  </div>
+                  <span className="inline-block mt-1 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
                 </div>
                 <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-amber-600 hover:text-amber-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-amber-200 transition-colors">Deactivate</button>
               </div>
@@ -138,8 +148,11 @@ export default function Coupons() {
             coupons.filter(c => !c.is_active).map(c => (
               <div key={c.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
-                  <span className="font-black text-slate-500 text-lg line-through decoration-slate-300">{c.code}</span>
-                  <span className="ml-3 bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-slate-500 text-lg line-through decoration-slate-300">{c.code}</span>
+                    {c.once_per_user && <span className="bg-slate-200 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded uppercase">1-Time</span>}
+                  </div>
+                  <span className="inline-block mt-1 bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
                 </div>
                 <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-emerald-600 hover:text-emerald-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors">Activate</button>
               </div>

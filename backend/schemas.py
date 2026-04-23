@@ -47,6 +47,7 @@ class CouponBase(BaseModel):
     code: str
     discount_percentage: int
     is_active: bool = True
+    once_per_user: bool = False
 
 class CouponCreate(CouponBase):
     pass
