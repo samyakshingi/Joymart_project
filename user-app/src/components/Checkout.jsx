@@ -55,14 +55,15 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
     try {
-      const res = await api.get(`/coupons/${couponCode.toUpperCase()}`);
+      const url = `/coupons/${couponCode.toUpperCase()}?phone=${formData.phone || userPhone || ''}`;
+      const res = await api.get(url);
       if (res.data.is_active) {
         setAppliedCoupon(res.data);
       } else {
         alert("This coupon is no longer active.");
       }
     } catch (err) {
-      alert("Invalid coupon code.");
+      alert(err.response?.data?.detail || "Invalid coupon code.");
     }
   };
 

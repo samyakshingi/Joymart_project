@@ -170,10 +170,21 @@ def get_all_coupons(db: Session = Depends(get_db)):
     return db.query(models.Coupon).all()
 
 @app.get("/coupons/{code}", response_model=schemas.CouponResponse)
-def get_coupon(code: str, db: Session = Depends(get_db)):
+def get_coupon(code: str, phone: Optional[str] = None, db: Session = Depends(get_db)):
     coupon = db.query(models.Coupon).filter(models.Coupon.code == code, models.Coupon.is_active == True).first()
     if not coupon:
         raise HTTPException(status_code=404, detail="Invalid or inactive coupon code")
+    
+    if coupon.once_per_user and phone:
+        user = db.query(models.User).filter(models.User.phone == phone).first()
+        if user:
+            past_order = db.query(models.Order).filter(
+                models.Order.user_id == user.id, 
+                models.Order.applied_coupon == code
+            ).first()
+            if past_order:
+                raise HTTPException(status_code=400, detail="You have already used this coupon code.")
+                
     return coupon
 
 @app.put("/coupons/{coupon_id}/toggle_status", response_model=schemas.CouponResponse)
