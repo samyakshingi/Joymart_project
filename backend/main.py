@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from typing import List
+from typing import List, Optional
 import datetime
 import csv
 import io
@@ -159,12 +159,25 @@ def update_product(product_id: int, product_update: schemas.ProductCreate, db: S
     return db_product
 
 # --- COUPON ENDPOINTS ---
+@app.get("/coupons", response_model=List[schemas.CouponResponse])
+def get_all_coupons(db: Session = Depends(get_db)):
+    return db.query(models.Coupon).all()
+
 @app.get("/coupons/{code}", response_model=schemas.CouponResponse)
 def get_coupon(code: str, db: Session = Depends(get_db)):
     coupon = db.query(models.Coupon).filter(models.Coupon.code == code, models.Coupon.is_active == True).first()
     if not coupon:
         raise HTTPException(status_code=404, detail="Invalid or inactive coupon code")
     return coupon
+
+@app.delete("/coupons/{coupon_id}")
+def delete_coupon(coupon_id: int, db: Session = Depends(get_db)):
+    coupon = db.query(models.Coupon).filter(models.Coupon.id == coupon_id).first()
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+    db.delete(coupon)
+    db.commit()
+    return {"message": "Coupon deleted successfully"}
 
 @app.post("/coupons", response_model=schemas.CouponResponse)
 def create_coupon(coupon: schemas.CouponCreate, db: Session = Depends(get_db)):
@@ -176,8 +189,16 @@ def create_coupon(coupon: schemas.CouponCreate, db: Session = Depends(get_db)):
 
 # --- ORDER ENDPOINTS ---
 @app.get("/orders", response_model=List[schemas.OrderResponse])
-def get_orders(db: Session = Depends(get_db)):
-    return db.query(models.Order).all()
+def get_orders(date: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Order).order_by(models.Order.order_date.desc())
+    if date:
+        try:
+            target_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+            orders = query.all()
+            return [o for o in orders if o.order_date.date() == target_date]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    return query.all()
 
 @app.post("/orders", response_model=schemas.OrderResponse)
 def create_order(order_req: schemas.OrderCreate, db: Session = Depends(get_db)):
@@ -321,14 +342,21 @@ def get_frequent_products(phone: str, db: Session = Depends(get_db)):
     return products_sorted
 
 # --- ANALYTICS ENDPOINTS ---
-@app.get("/analytics/today")
-def get_analytics_today(db: Session = Depends(get_db)):
-    today = datetime.datetime.now(datetime.timezone.utc).date()
+@app.get("/analytics")
+def get_analytics(date: Optional[str] = None, db: Session = Depends(get_db)):
+    if date:
+        try:
+            target_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        target_date = datetime.datetime.now(datetime.timezone.utc).date()
+        
     orders = db.query(models.Order).all()
-    today_orders = [o for o in orders if o.order_date.date() == today and o.status != "Cancelled"]
+    target_orders = [o for o in orders if o.order_date.date() == target_date and o.status != "Cancelled"]
     
-    total_revenue = sum(float(o.total_amount) for o in today_orders)
-    total_orders = len(today_orders)
+    total_revenue = sum(float(o.total_amount) for o in target_orders)
+    total_orders = len(target_orders)
     
     out_of_stock_count = db.query(models.Product).filter(models.Product.stock_count < 5).count()
     

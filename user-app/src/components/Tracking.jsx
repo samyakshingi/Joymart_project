@@ -220,6 +220,14 @@ export default function Tracking() {
                   </div>
                 )}
 
+                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 mt-4">
+                  <h4 className="text-sm font-black text-emerald-800 uppercase tracking-widest mb-2">Delivery Details</h4>
+                  <p className="font-bold text-emerald-900 text-lg">{order.user?.name || 'Customer'}</p>
+                  <p className="font-semibold text-emerald-800 text-sm mt-1">
+                    {order.user?.flat_number ? `${order.user.flat_number}, ${order.user.society?.name || ''}` : 'Address not provided'}
+                  </p>
+                </div>
+
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6 mt-4">
                   <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Items</h4>
                   <div className="space-y-4">

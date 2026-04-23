@@ -4,13 +4,15 @@ import api from '../api';
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/orders');
+      const response = await api.get(`/orders?date=${selectedDate}`);
       setOrders(response.data);
       
-      const statRes = await api.get('/analytics/today');
+      const statRes = await api.get(`/analytics?date=${selectedDate}`);
       setAnalytics(statRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -44,6 +46,7 @@ export default function Orders() {
 
     const subtotal = order.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0);
     const delivery = subtotal >= 100 ? 0 : 30;
+    const discount = order.applied_coupon ? (subtotal - (order.total_amount - order.tip_amount - delivery)) : 0;
     
     printWindow.document.write(`
       <html>
@@ -68,13 +71,15 @@ export default function Orders() {
           <div class="details">
             <div>Order ID: #${order.id}</div>
             <div>Payment: ${order.payment_method}</div>
-            <div>Customer: ${order.user_id}</div>
+            <div>Customer: ${order.user?.name || `User ID ${order.user_id}`}</div>
+            <div>Address: ${order.user?.flat_number ? `${order.user.flat_number}, ${order.user.society?.name || ''}` : ''}</div>
           </div>
           <div style="margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px;">
             ${itemsHtml}
           </div>
           <div class="summary">
             <div class="total-row"><span>Subtotal:</span> <span>₹${subtotal.toFixed(2)}</span></div>
+            ${discount > 0 ? `<div class="total-row" style="color: green;"><span>Discount:</span> <span>-₹${discount.toFixed(2)}</span></div>` : ''}
             <div class="total-row"><span>Delivery:</span> <span>₹${delivery.toFixed(2)}</span></div>
             ${order.tip_amount > 0 ? `<div class="total-row"><span>Rider Tip:</span> <span>₹${order.tip_amount}</span></div>` : ''}
             <div class="total-row" style="font-size: 16px; margin-top: 10px; border-top: 1px solid #000; padding-top: 5px;">
@@ -94,7 +99,7 @@ export default function Orders() {
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedDate]);
 
   const updateStatus = async (orderId, newStatus) => {
     try {
@@ -124,7 +129,15 @@ export default function Orders() {
         <div className="flex justify-between items-center w-full lg:w-auto">
           <div className="text-left">
             <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Live Operations</h2>
-            <p className="text-sm text-slate-500 font-bold mt-1 hidden sm:block">Manage orders by moving them across stages.</p>
+            <div className="flex items-center gap-3 mt-1">
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-slate-100 border-none text-xs sm:text-sm font-bold text-slate-600 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              />
+              <p className="text-sm text-slate-500 font-bold hidden sm:block">Manage orders by moving them across stages.</p>
+            </div>
           </div>
           <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full shadow-lg shrink-0 lg:hidden">
             <span className="flex h-2 w-2 relative">
@@ -225,8 +238,15 @@ export default function Orders() {
                         <span className="text-slate-400">•</span>
                         <span className="uppercase tracking-widest text-[9px] bg-slate-200 px-1.5 py-0.5 rounded">{order.payment_method}</span>
                         <span className="text-slate-400">•</span>
-                        <span>User ID: {order.user_id}</span>
+                        <span className="truncate max-w-[100px]">{order.user?.name || `User ID ${order.user_id}`}</span>
                       </div>
+                      
+                      <button 
+                        onClick={() => setSelectedOrderDetails(order)}
+                        className="w-full mb-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors border border-slate-200"
+                      >
+                        + More Details
+                      </button>
 
                       {order.status === 'Pending' && (
                         <div className="flex gap-2 mt-4">
@@ -275,6 +295,72 @@ export default function Orders() {
           )
         })}
       </div>
+
+      {/* More Details Modal */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 sm:p-8">
+              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <h3 className="text-xl font-black text-slate-900">Order #{selectedOrderDetails.id}</h3>
+                <button onClick={() => setSelectedOrderDetails(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+                  <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                  <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Delivery Address</h4>
+                  <p className="font-bold text-amber-900 text-lg">{selectedOrderDetails.user?.name || `Customer (ID: ${selectedOrderDetails.user_id})`}</p>
+                  <p className="font-semibold text-amber-800 text-sm">{selectedOrderDetails.user?.phone || 'No phone provided'}</p>
+                  <p className="font-semibold text-amber-800 text-sm mt-1">
+                    {selectedOrderDetails.user?.flat_number ? `${selectedOrderDetails.user.flat_number}, ${selectedOrderDetails.user.society?.name || ''}` : 'Address not provided'}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Bill Details</h4>
+                  <div className="space-y-2 mb-4">
+                    {selectedOrderDetails.items.map(item => (
+                      <div key={item.id} className="flex justify-between text-sm font-bold text-slate-700">
+                        <span>{item.product?.name || 'Product'} x{item.quantity}</span>
+                        <span>₹{(item.price_at_purchase * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="pt-3 border-t border-dashed border-slate-200 space-y-2">
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <span>Subtotal</span>
+                      <span>₹{selectedOrderDetails.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0).toFixed(2)}</span>
+                    </div>
+                    {selectedOrderDetails.applied_coupon && (
+                      <div className="flex justify-between text-sm font-bold text-emerald-600">
+                        <span>Coupon Discount</span>
+                        <span>-₹{(selectedOrderDetails.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) - (selectedOrderDetails.total_amount - selectedOrderDetails.tip_amount - (selectedOrderDetails.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? 0 : 30))).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <span>Delivery</span>
+                      <span>₹{selectedOrderDetails.items.reduce((sum, i) => sum + (i.price_at_purchase * i.quantity), 0) >= 100 ? '0.00' : '30.00'}</span>
+                    </div>
+                    {selectedOrderDetails.tip_amount > 0 && (
+                      <div className="flex justify-between text-sm font-bold text-slate-500">
+                        <span>Rider Tip</span>
+                        <span>₹{selectedOrderDetails.tip_amount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-black text-slate-900 pt-2 mt-2 border-t border-slate-200">
+                      <span>Total ({selectedOrderDetails.payment_method})</span>
+                      <span>₹{selectedOrderDetails.total_amount}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

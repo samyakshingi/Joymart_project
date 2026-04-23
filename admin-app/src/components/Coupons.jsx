@@ -1,12 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 
 export default function Coupons() {
+  const [coupons, setCoupons] = useState([]);
   const [newCoupon, setNewCoupon] = useState({
     code: '',
     discount_percentage: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchCoupons = async () => {
+    try {
+      const res = await api.get('/coupons');
+      setCoupons(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCoupons();
+  }, []);
+
+  const handleDeleteCoupon = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this coupon?")) return;
+    try {
+      await api.delete(`/coupons/${id}`);
+      fetchCoupons();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete coupon.");
+    }
+  };
 
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
@@ -20,6 +45,7 @@ export default function Coupons() {
         is_active: true
       });
       setNewCoupon({ code: '', discount_percentage: '' });
+      fetchCoupons();
       alert("Coupon created successfully!");
     } catch (error) {
       console.error(error);
@@ -78,6 +104,46 @@ export default function Coupons() {
              <li className="flex gap-2"><span>•</span> Only one coupon can be used per order.</li>
              <li className="flex gap-2"><span>•</span> Codes are case-insensitive for customers.</li>
            </ul>
+        </div>
+      </div>
+
+      <div className="mt-10 bg-white rounded-3xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+        <h2 className="text-2xl font-black text-slate-900 mb-6">Currently Active Coupons</h2>
+        <div className="space-y-4">
+          {coupons.filter(c => c.is_active).length === 0 ? (
+            <p className="text-slate-400 font-bold">No active coupons found.</p>
+          ) : (
+            coupons.filter(c => c.is_active).map(c => (
+              <div key={c.id} className="flex justify-between items-center p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                <div>
+                  <span className="font-black text-emerald-900 text-lg">{c.code}</span>
+                  <span className="ml-3 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
+                </div>
+                <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-red-200">Delete</button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 bg-white rounded-3xl shadow-sm border border-slate-200 p-8 relative overflow-hidden opacity-75 hover:opacity-100 transition-opacity">
+        <div className="absolute top-0 left-0 w-full h-1 bg-slate-300"></div>
+        <h2 className="text-xl font-black text-slate-900 mb-6 text-slate-500">Previously Active Coupons</h2>
+        <div className="space-y-4">
+          {coupons.filter(c => !c.is_active).length === 0 ? (
+            <p className="text-slate-400 font-bold">No inactive coupons found.</p>
+          ) : (
+            coupons.filter(c => !c.is_active).map(c => (
+              <div key={c.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div>
+                  <span className="font-black text-slate-500 text-lg line-through decoration-slate-300">{c.code}</span>
+                  <span className="ml-3 bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
+                </div>
+                <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-red-200">Delete</button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

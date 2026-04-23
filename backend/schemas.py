@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     flat_number: str
     phone: str
     name: str
+    society: Optional[SocietyResponse] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Product Schemas ---
@@ -87,6 +88,7 @@ class OrderResponse(BaseModel):
     payment_method: str
     status: str
     items: List[OrderItemResponse] = []
+    user: Optional[UserResponse] = None
     model_config = ConfigDict(from_attributes=True)
 
 class OrderStatusUpdate(BaseModel):

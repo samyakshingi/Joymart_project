@@ -16,6 +16,7 @@ class User(Base):
     phone = Column(String, unique=True, index=True)
     name = Column(String)
     firebase_token = Column(String, nullable=True)
+    society = relationship("Society")
 
 class Product(Base):
     __tablename__ = "products"
@@ -40,6 +41,7 @@ class Order(Base):
     payment_method = Column(String, default="Cash") # Cash or UPI
     status = Column(String, default="Pending") # Pending, Accepted, OutForDelivery, Completed, Cancelled
 
+    user = relationship("User")
     items = relationship("OrderItem", back_populates="order")
 
 class OrderItem(Base):

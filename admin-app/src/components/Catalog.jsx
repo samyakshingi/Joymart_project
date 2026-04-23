@@ -232,25 +232,25 @@ export default function Catalog() {
               <form onSubmit={handleUpdateProduct} className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Product Name</label>
-                  <input required type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                  <input required type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700">Price (₹)</label>
-                    <input required type="number" step="0.01" value={editingProduct.price} onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                    <input required type="number" step="0.01" value={editingProduct.price} onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700">Disc. Price (₹)</label>
-                    <input type="number" step="0.01" value={editingProduct.discounted_price} onChange={(e) => setEditingProduct({...editingProduct, discounted_price: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                    <input type="number" step="0.01" value={editingProduct.discounted_price} onChange={(e) => setEditingProduct({...editingProduct, discounted_price: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Stock Count</label>
-                  <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" />
+                  <input required type="number" value={editingProduct.stock_count} onChange={(e) => setEditingProduct({...editingProduct, stock_count: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Image URL</label>
-                  <input type="text" value={editingProduct.image_url} onChange={(e) => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="https://example.com/image.png" />
+                  <input type="text" value={editingProduct.image_url} onChange={(e) => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" placeholder="https://example.com/image.png" />
                 </div>
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
