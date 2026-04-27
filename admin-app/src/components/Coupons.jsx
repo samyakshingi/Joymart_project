@@ -9,6 +9,9 @@ export default function Coupons() {
     once_per_user: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedCoupon, setExpandedCoupon] = useState(null);
+  const [usageData, setUsageData] = useState({});
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
   const fetchCoupons = async () => {
     try {
@@ -32,6 +35,23 @@ export default function Coupons() {
     } catch (err) {
       console.error(err);
       alert(`Failed to ${action} coupon.`);
+    }
+  };
+
+  const fetchUsage = async (code) => {
+    if (expandedCoupon === code) {
+      setExpandedCoupon(null);
+      return;
+    }
+    setExpandedCoupon(code);
+    setIsLoadingUsage(true);
+    try {
+      const res = await api.get(`/coupons/${code}/usage`);
+      setUsageData(prev => ({ ...prev, [code]: res.data }));
+    } catch (err) {
+      console.error("Failed to fetch usage:", err);
+    } finally {
+      setIsLoadingUsage(false);
     }
   };
 
@@ -123,15 +143,43 @@ export default function Coupons() {
             <p className="text-slate-400 font-bold">No active coupons found.</p>
           ) : (
             coupons.filter(c => c.is_active).map(c => (
-              <div key={c.id} className="flex justify-between items-center p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-emerald-900 text-lg">{c.code}</span>
-                    {c.once_per_user && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">1-Time</span>}
+              <div key={c.id} className="bg-emerald-50 rounded-xl border border-emerald-100 overflow-hidden">
+                <div className="flex justify-between items-center p-4">
+                  <div className="cursor-pointer" onClick={() => fetchUsage(c.code)}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-emerald-900 text-lg">{c.code}</span>
+                      {c.once_per_user && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">1-Time</span>}
+                      <span className={`text-[10px] transition-transform ${expandedCoupon === c.code ? 'rotate-180' : ''}`}>▼</span>
+                    </div>
+                    <span className="inline-block mt-1 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
                   </div>
-                  <span className="inline-block mt-1 bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded">{c.discount_percentage}% OFF</span>
+                  <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-amber-600 hover:text-amber-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-amber-200 transition-colors">Deactivate</button>
                 </div>
-                <button onClick={() => handleToggleStatus(c.id, c.is_active)} className="text-amber-600 hover:text-amber-800 font-bold text-sm bg-white px-3 py-1.5 rounded-lg border border-amber-200 transition-colors">Deactivate</button>
+                {expandedCoupon === c.code && (
+                  <div className="bg-white/60 p-4 border-t border-emerald-100 animate-in slide-in-from-top-2 duration-200">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Usage Analytics</h4>
+                    {isLoadingUsage && !usageData[c.code] ? (
+                      <div className="flex justify-center py-4"><div className="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full"></div></div>
+                    ) : (usageData[c.code]?.length === 0 ? (
+                      <p className="text-xs font-bold text-slate-400 italic">This coupon has not been used yet.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                        {usageData[c.code].map((use, idx) => (
+                          <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                            <div>
+                              <p className="text-xs font-black text-slate-800">{use.user_name}</p>
+                              <p className="text-[10px] font-bold text-slate-400">{use.user_phone}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-black text-emerald-600">₹{use.total_amount}</p>
+                              <p className="text-[8px] font-bold text-slate-400">{new Date(use.order_date).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}

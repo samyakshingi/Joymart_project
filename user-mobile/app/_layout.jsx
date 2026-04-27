@@ -1,11 +1,15 @@
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
 import { useStore } from '../store';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import './i18n';
 
 const queryClient = new QueryClient();
+
+const APP_VERSION = "1.0.0";
+const PLATFORM = Platform.OS;
 
 export default function Layout() {
   const router = useRouter();
@@ -32,6 +36,28 @@ export default function Layout() {
     }
   }, [user.phone, pathname]);
 
+  const [forceUpdate, setForceUpdate] = useState(false);
+
+  useEffect(() => {
+    api.get(`/system/version-check?platform=${PLATFORM}&current_version=${APP_VERSION}`)
+      .then(res => setForceUpdate(res.data.force_update))
+      .catch(err => console.error('Version check failed', err));
+  }, []);
+
+  if (forceUpdate) {
+    return (
+      <View style={styles.forceUpdateContainer}>
+        <View style={styles.forceUpdateCard}>
+          <Text style={styles.forceUpdateTitle}>Update Required</Text>
+          <Text style={styles.forceUpdateSubtitle}>A critical update is required to continue using JoyMart.</Text>
+          <TouchableOpacity style={styles.updateBtn} onPress={() => Linking.openURL('https://store.joymart.com')}>
+            <Text style={styles.updateBtnText}>Update Now</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -48,8 +74,11 @@ export default function Layout() {
             <Text style={styles.logoText}>JoyMart</Text>
           </TouchableOpacity>
           <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileButton}>
+              <View style={styles.profileIcon}><Text style={styles.profileIconText}>{user.phone ? '👤' : '?'}</Text></View>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/tracking')} style={styles.trackButton}>
-              <Text style={styles.trackText}>Track Order</Text>
+              <Text style={styles.trackText}>Track</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/checkout')} style={styles.cartButton}>
               <Text style={styles.cartText}>₹{cartTotal.toFixed(0)}</Text>
@@ -107,7 +136,21 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+  },
+  profileButton: {
+    marginRight: 4,
+  },
+  profileIcon: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileIconText: {
+    fontSize: 16,
   },
   trackButton: {
     padding: 8,
@@ -167,5 +210,11 @@ const styles = StyleSheet.create({
   footerDot: {
     fontSize: 12,
     color: '#cbd5e1',
-  }
+  },
+  forceUpdateContainer: { flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  forceUpdateCard: { backgroundColor: '#fff', borderRadius: 24, padding: 32, width: '100%', maxWidth: 400, alignItems: 'center' },
+  forceUpdateTitle: { fontSize: 24, fontWeight: '900', color: '#0f172a', marginBottom: 12 },
+  forceUpdateSubtitle: { fontSize: 16, color: '#64748b', textAlign: 'center', marginBottom: 32, fontWeight: 'bold' },
+  updateBtn: { backgroundColor: '#10b981', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, width: '100%', alignItems: 'center' },
+  updateBtnText: { color: '#fff', fontSize: 18, fontWeight: '900' }
 });

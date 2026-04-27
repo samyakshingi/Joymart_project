@@ -14,6 +14,46 @@ export default function Catalog() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [discountPercent, setDiscountPercent] = useState('');
+  
+  const [masterSearch, setMasterSearch] = useState('');
+  const [masterResults, setMasterResults] = useState([]);
+
+  useEffect(() => {
+    if (masterSearch.length > 2) {
+      api.get(`/system/master-catalog?search=${masterSearch}`)
+         .then(res => setMasterResults(res.data))
+         .catch(err => console.error(err));
+    } else {
+      setMasterResults([]);
+    }
+  }, [masterSearch]);
+
+  const selectMasterItem = (item) => {
+    setNewProduct({
+      ...newProduct,
+      name: item.name,
+      image_url: item.image_url,
+      price: item.price || '',
+    });
+    setMasterSearch('');
+    setMasterResults([]);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await api.post('/products/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setNewProduct({...newProduct, image_url: res.data.image_url});
+    } catch (err) {
+      alert("Image upload failed");
+    }
+  };
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -115,7 +155,33 @@ export default function Catalog() {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
         <h2 className="text-2xl font-bold text-slate-800 mb-6">Add New Product</h2>
-        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 items-end">
+        
+        <div className="mb-6 relative z-50">
+          <label className="text-sm font-semibold text-slate-700 block mb-1">Search Master Catalog (Auto-fill)</label>
+          <input 
+            type="text" 
+            value={masterSearch}
+            onChange={(e) => setMasterSearch(e.target.value)}
+            className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2 bg-slate-50" 
+            placeholder="Type 'Maggi' or 'Amul' to pull optimized images..." 
+          />
+          {masterResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg overflow-hidden z-50">
+              {masterResults.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={() => selectMasterItem(item)}
+                  className="px-4 py-3 hover:bg-emerald-50 cursor-pointer flex items-center gap-3 border-b border-slate-100 last:border-0"
+                >
+                  <img src={item.image_url} alt="" className="w-8 h-8 object-cover rounded" />
+                  <span className="font-bold text-slate-800">{item.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 items-end relative z-40">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Product Name</label>
             <input required type="text" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="e.g. Farm Fresh Milk 1L" />
@@ -133,8 +199,15 @@ export default function Catalog() {
             <input required type="text" value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="Dairy" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700">Image URL <span className="font-normal text-slate-400">(Cloudinary)</span></label>
-            <input type="url" value={newProduct.image_url} onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-4 py-2" placeholder="https://res.cloudinary.com/..." />
+            <label className="text-sm font-semibold text-slate-700">Image</label>
+            {!newProduct.image_url ? (
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+            ) : (
+              <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                <span className="text-emerald-700 font-bold text-xs truncate">Optimized Image Linked</span>
+                <button type="button" onClick={() => setNewProduct({...newProduct, image_url: ''})} className="text-red-500 text-xs font-black ml-auto">✕</button>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700">Stock Count</label>
@@ -277,6 +350,23 @@ export default function Catalog() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Product Name</label>
                   <input required type="text" value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Apply Discount Percentage (%)</label>
+                  <input 
+                    type="number" 
+                    placeholder="e.g. 10" 
+                    value={discountPercent} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDiscountPercent(val);
+                      if (val && !isNaN(val)) {
+                        const calculated = (parseFloat(editingProduct.price) * (1 - parseFloat(val) / 100)).toFixed(2);
+                        setEditingProduct({ ...editingProduct, discounted_price: calculated });
+                      }
+                    }} 
+                    className="w-full rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/30 focus:border-emerald-500 focus:bg-white outline-none transition-all px-4 py-3 text-emerald-700 font-bold" 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">

@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Profile({ userPhone, onLogout }) {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const { t, i18n } = useTranslation();
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem('joymart_language', lng);
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -49,17 +56,70 @@ export default function Profile({ userPhone, onLogout }) {
         </div>
         <button 
           onClick={onLogout}
-          className="px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition-colors"
+          className="px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition-colors mt-4 md:mt-0"
         >
-          Logout
+          {t('Logout') || 'Logout'}
         </button>
+      </div>
+
+      {/* Account Hub Navigation */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link to="/wallet" className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:border-emerald-500 hover:shadow-md transition-all group flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900">{t('My Wallet') || 'My Wallet'}</h3>
+            <p className="text-xs font-bold text-slate-400 mt-1">Balance & Recharge</p>
+          </div>
+        </Link>
+        <Link to="/lists" className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:border-emerald-500 hover:shadow-md transition-all group flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900">{t('Smart Lists') || 'Smart Lists'}</h3>
+            <p className="text-xs font-bold text-slate-400 mt-1">Monthly Ration</p>
+          </div>
+        </Link>
+        <Link to="/subscriptions" className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:border-emerald-500 hover:shadow-md transition-all group flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900">{t('Subscriptions') || 'Subscriptions'}</h3>
+            <p className="text-xs font-bold text-slate-400 mt-1">Daily / Weekly Delivery</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Language Toggle */}
+      <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
+        <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+          <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+          {t('Change Language') || 'Change Language'}
+        </h2>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => changeLanguage('en')}
+            className={`px-6 py-3 rounded-xl font-black transition-colors ${i18n.language === 'en' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}
+          >
+            English
+          </button>
+          <button 
+            onClick={() => changeLanguage('hi')}
+            className={`px-6 py-3 rounded-xl font-black transition-colors ${i18n.language === 'hi' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}
+          >
+            हिन्दी
+          </button>
+        </div>
       </div>
 
       {/* Address Details */}
       <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
         <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
           <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-          Saved Delivery Address
+          {t('Saved Delivery Address') || 'Saved Delivery Address'}
         </h2>
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
           <p className="font-bold text-slate-900 text-lg">{user.flat_number}</p>
@@ -71,7 +131,7 @@ export default function Profile({ userPhone, onLogout }) {
       <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
         <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
           <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-          Previous Orders
+          {t('Previous Orders') || 'Previous Orders'}
         </h2>
         
         {orders.length === 0 ? (
@@ -149,6 +209,18 @@ export default function Profile({ userPhone, onLogout }) {
                 <div>
                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Instructions</h4>
                   <p className="bg-amber-50 border border-amber-100 text-amber-800 text-sm font-bold p-4 rounded-xl">{selectedOrder.delivery_instructions}</p>
+                </div>
+              )}
+
+              {selectedOrder.status === 'Completed' && selectedOrder.delivery_photo_url && (
+                <div>
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Delivery Proof - Left at Door
+                  </h4>
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                    <img src={selectedOrder.delivery_photo_url} alt="Proof of Delivery" className="w-full h-auto object-cover max-h-64" />
+                  </div>
                 </div>
               )}
 

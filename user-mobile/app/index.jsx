@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, ActivityIndicator, FlatList, Dimensions, Modal, Alert } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { api } from '../api';
 import { useStore } from '../store';
+import { useTranslation } from 'react-i18next';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -11,6 +14,12 @@ export default function Home() {
   const [frequentProducts, setFrequentProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [banners, setBanners] = useState([]);
+  const [subModalProduct, setSubModalProduct] = useState(null);
+  const [subForm, setSubForm] = useState({ frequency: 'Daily', quantity: 1 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const scrollViewRef = React.useRef(null);
+  const { t } = useTranslation();
 
   const { cart, addToCart, decreaseQuantity, user } = useStore();
 
@@ -47,7 +56,53 @@ export default function Home() {
       }
     };
     fetchProducts();
+
+    const fetchBanners = async () => {
+      try {
+        const res = await api.get('/banners');
+        setBanners(res.data);
+      } catch(err) {}
+    };
+    fetchBanners();
   }, [user.phone]);
+
+  const scrollToProduct = (productId) => {
+    // Note: Since we are in a ScrollView with a map-based grid, we can't easily scroll to a specific index.
+    // However, we can use the search query as a 'focus' mechanism or just show an alert if not found.
+    // In a real app, we'd use a SectionList or similar. For now, we'll try to find the category and filter.
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      setActiveCategory(product.category);
+      // We'll give it a moment to render then scroll to top (simplest way in this architecture)
+      scrollViewRef.current?.scrollTo({ y: 500, animated: true });
+    }
+  };
+
+  const handleSubscribe = async () => {
+    if (!subModalProduct || !user?.phone) {
+      Alert.alert('Error', 'Please login first to subscribe.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const userRes = await api.get(`/users/${user.phone}`);
+      await api.post(`/subscriptions`, {
+        user_id: userRes.data.id,
+        product_id: subModalProduct.id,
+        frequency: subForm.frequency,
+        quantity: parseInt(subForm.quantity)
+      });
+      Alert.alert('Success', 'Subscription created successfully!');
+      setSubModalProduct(null);
+      setSubForm({ frequency: 'Daily', quantity: 1 });
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to create subscription.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const getQuantityInCart = (productId) => {
     const item = cart.find(i => i.product.id === productId);
@@ -106,6 +161,12 @@ export default function Home() {
               </View>
             )}
           </View>
+          <TouchableOpacity 
+            style={styles.subscribeBtnCard}
+            onPress={() => setSubModalProduct(product)}
+          >
+            <Text style={styles.subscribeBtnCardText}>SUBSCRIBE</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -120,11 +181,38 @@ export default function Home() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-      <View style={styles.heroBanner}>
-        <Text style={styles.heroTag}>LIGHTNING FAST</Text>
-        <Text style={styles.heroTitle}>Groceries delivered in <Text style={styles.heroHighlight}>minutes.</Text></Text>
-      </View>
+    <ScrollView 
+      ref={scrollViewRef}
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer} 
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Banner Carousel */}
+      {banners.length > 0 ? (
+        <View style={styles.carouselContainer}>
+          <FlatList
+            horizontal
+            pagingEnabled
+            data={banners}
+            keyExtractor={(item) => item.id.toString()}
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                activeOpacity={0.9}
+                onPress={() => item.linked_product_id && scrollToProduct(item.linked_product_id)}
+                style={styles.bannerItem}
+              >
+                <Image source={{ uri: item.image_url }} style={styles.bannerImage} />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      ) : (
+        <View style={styles.heroBanner}>
+          <Text style={styles.heroTag}>LIGHTNING FAST</Text>
+          <Text style={styles.heroTitle}>Groceries delivered in <Text style={styles.heroHighlight}>minutes.</Text></Text>
+        </View>
+      )}
 
       <View style={styles.searchContainer}>
         <TextInput
@@ -171,7 +259,9 @@ export default function Home() {
             style={[styles.categoryBtn, activeCategory === cat && styles.activeCategoryBtn]}
             onPress={() => setActiveCategory(cat)}
           >
-            <Text style={[styles.categoryBtnText, activeCategory === cat && styles.activeCategoryBtnText]}>{cat}</Text>
+            <Text style={[styles.categoryBtnText, activeCategory === cat && styles.activeCategoryBtnText]}>
+              {cat === 'All' ? t('Categories') || 'All' : cat}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -187,6 +277,66 @@ export default function Home() {
           ))
         )}
       </View>
+
+      {/* Subscription Modal */}
+      <Modal visible={!!subModalProduct} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Subscribe</Text>
+                <Text style={styles.modalSubtitle} numberOfLines={1}>{subModalProduct?.name}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSubModalProduct(null)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <View style={styles.subInfoBox}>
+                <Text style={styles.subInfoText}>Subscriptions are deducted from your JoyMart Wallet automatically.</Text>
+              </View>
+
+              <Text style={styles.subLabel}>FREQUENCY</Text>
+              <View style={styles.subFreqRow}>
+                {['Daily', 'Weekly'].map(freq => (
+                  <TouchableOpacity
+                    key={freq}
+                    style={[styles.subFreqBtn, subForm.frequency === freq && styles.subFreqBtnActive]}
+                    onPress={() => setSubForm({...subForm, frequency: freq})}
+                  >
+                    <Text style={[styles.subFreqText, subForm.frequency === freq && styles.subFreqTextActive]}>{freq}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.subLabel}>QUANTITY PER DELIVERY</Text>
+              <View style={styles.subQtyRow}>
+                <TouchableOpacity style={styles.subQtyBtn} onPress={() => setSubForm(p => ({...p, quantity: Math.max(1, p.quantity - 1)}))}>
+                  <Text style={styles.subQtyBtnText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.subQtyValue}>{subForm.quantity}</Text>
+                <TouchableOpacity style={styles.subQtyBtn} onPress={() => setSubForm(p => ({...p, quantity: p.quantity + 1}))}>
+                  <Text style={styles.subQtyBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.subCostRow}>
+                <Text style={styles.subCostLabel}>Estimated Cost</Text>
+                <Text style={styles.subCostValue}>₹{((subModalProduct?.discounted_price || subModalProduct?.price || 0) * subForm.quantity).toFixed(2)} / {subForm.frequency.toLowerCase()}</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.subSubmitBtn, isSubmitting && styles.subSubmitBtnDisabled]}
+                onPress={handleSubscribe}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.subSubmitText}>Confirm Subscription</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -215,6 +365,9 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
   heroHighlight: { color: '#34d399' },
+  carouselContainer: { height: 200, marginBottom: 24, borderRadius: 24, overflow: 'hidden' },
+  bannerItem: { width: SCREEN_WIDTH - 32, height: 200 }, // 32 for padding
+  bannerImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   searchContainer: { marginBottom: 24 },
   searchInput: {
     backgroundColor: '#fff',
@@ -273,5 +426,32 @@ const styles = StyleSheet.create({
   qtyBtn: { width: 24, height: 24, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   qtyText: { color: '#fff', fontWeight: '900', width: 24, textAlign: 'center' },
-  noProductsText: { textAlign: 'center', color: '#94a3b8', fontWeight: 'bold', padding: 20, width: '100%' }
+  noProductsText: { textAlign: 'center', color: '#94a3b8', fontWeight: 'bold', padding: 20, width: '100%' },
+  subscribeBtnCard: { marginTop: 12, borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 8, paddingVertical: 6, alignItems: 'center' },
+  subscribeBtnCardText: { color: '#2563eb', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 16 },
+  modalContent: { backgroundColor: '#fff', borderRadius: 24, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  modalTitle: { fontSize: 24, fontWeight: '900', color: '#0f172a' },
+  modalSubtitle: { fontSize: 12, fontWeight: 'bold', color: '#64748b', marginTop: 4, maxWidth: '80%' },
+  modalCloseText: { fontSize: 24, color: '#94a3b8', fontWeight: 'bold' },
+  modalBody: { gap: 16 },
+  subInfoBox: { backgroundColor: '#fffbeb', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fde68a', marginBottom: 8 },
+  subInfoText: { color: '#92400e', fontSize: 12, fontWeight: 'bold' },
+  subLabel: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 1, marginBottom: -8 },
+  subFreqRow: { flexDirection: 'row', gap: 12 },
+  subFreqBtn: { flex: 1, borderWidth: 2, borderColor: '#f1f5f9', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  subFreqBtnActive: { borderColor: '#3b82f6', backgroundColor: '#eff6ff' },
+  subFreqText: { color: '#64748b', fontWeight: '900', fontSize: 14 },
+  subFreqTextActive: { color: '#2563eb' },
+  subQtyRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  subQtyBtn: { width: 48, height: 48, backgroundColor: '#f1f5f9', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  subQtyBtnText: { color: '#475569', fontSize: 24, fontWeight: '900' },
+  subQtyValue: { flex: 1, textAlign: 'center', fontSize: 24, fontWeight: '900', color: '#0f172a' },
+  subCostRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: 16, borderRadius: 16, marginTop: 8 },
+  subCostLabel: { color: '#64748b', fontSize: 12, fontWeight: 'bold' },
+  subCostValue: { color: '#0f172a', fontSize: 18, fontWeight: '900' },
+  subSubmitBtn: { backgroundColor: '#2563eb', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 8 },
+  subSubmitBtnDisabled: { opacity: 0.5 },
+  subSubmitText: { color: '#fff', fontSize: 16, fontWeight: '900' }
 });

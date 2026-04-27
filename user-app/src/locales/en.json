@@ -1,0 +1,20 @@
+{
+  "translation": {
+    "Add to Cart": "Add to Cart",
+    "Checkout": "Checkout",
+    "My Wallet": "My Wallet",
+    "Total": "Total",
+    "Place Order": "Place Order",
+    "Categories": "Categories",
+    "Delivery Time": "Delivery Time",
+    "Immediate (As soon as possible)": "Immediate (As soon as possible)",
+    "Today Evening (06:00 PM - 08:00 PM)": "Today Evening (06:00 PM - 08:00 PM)",
+    "Tomorrow Morning (07:00 AM - 09:00 AM)": "Tomorrow Morning (07:00 AM - 09:00 AM)",
+    "Change Language": "Change Language",
+    "Logout": "Logout",
+    "Smart Lists": "Smart Lists",
+    "Subscriptions": "Subscriptions",
+    "Previous Orders": "Previous Orders",
+    "Saved Delivery Address": "Saved Delivery Address"
+  }
+}

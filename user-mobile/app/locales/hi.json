@@ -1,0 +1,20 @@
+{
+  "translation": {
+    "Add to Cart": "कार्ट में डालें",
+    "Checkout": "चेकआउट",
+    "My Wallet": "मेरा वॉलेट",
+    "Total": "कुल",
+    "Place Order": "ऑर्डर दें",
+    "Categories": "श्रेणियाँ",
+    "Delivery Time": "डिलीवरी का समय",
+    "Immediate (As soon as possible)": "तत्काल (जल्द से जल्द)",
+    "Today Evening (06:00 PM - 08:00 PM)": "आज शाम (06:00 PM - 08:00 PM)",
+    "Tomorrow Morning (07:00 AM - 09:00 AM)": "कल सुबह (07:00 AM - 09:00 AM)",
+    "Change Language": "भाषा बदलें",
+    "Logout": "लॉग आउट",
+    "Smart Lists": "स्मार्ट सूची",
+    "Subscriptions": "सदस्यता",
+    "Previous Orders": "पिछले ऑर्डर",
+    "Saved Delivery Address": "सहेजा गया डिलीवरी पता"
+  }
+}

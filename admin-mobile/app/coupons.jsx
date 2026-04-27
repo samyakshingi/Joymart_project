@@ -7,16 +7,37 @@ export default function CouponManager() {
   const [newCoupon, setNewCoupon] = useState({ code: '', discount_percentage: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedCoupon, setExpandedCoupon] = useState(null);
+  const [usageData, setUsageData] = useState({});
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
   const fetchCoupons = async () => {
     try {
-      // Note: We don't have a GET /coupons (all) yet in backend, but we'll assume it exists or use a workaround.
-      // For now, let's assume the admin can at least create them and we'll show a message.
-      // Actually, I'll add GET /coupons to main.py if needed, but for now I'll just implement the creation UI.
-      // Let's check if I added GET /coupons in step 1. I only added GET /coupons/{code}.
-      // I'll add GET /coupons to the backend now to make this screen useful.
+      const res = await api.get('/coupons');
+      setCoupons(res.data);
     } catch (error) { console.error(error); }
   };
+
+  const fetchUsage = async (code) => {
+    if (expandedCoupon === code) {
+      setExpandedCoupon(null);
+      return;
+    }
+    setExpandedCoupon(code);
+    setIsLoadingUsage(true);
+    try {
+      const res = await api.get(`/coupons/${code}/usage`);
+      setUsageData(prev => ({ ...prev, [code]: res.data }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingUsage(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCoupons();
+  }, []);
 
   const handleCreateCoupon = async () => {
     if (!newCoupon.code || !newCoupon.discount_percentage) {
@@ -77,10 +98,53 @@ export default function CouponManager() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Active Coupons</Text>
+        {coupons.length === 0 ? (
+          <Text style={styles.emptyText}>No coupons created yet.</Text>
+        ) : (
+          coupons.map(c => (
+            <View key={c.id} style={styles.couponItem}>
+              <TouchableOpacity style={styles.couponHeader} onPress={() => fetchUsage(c.code)}>
+                <View>
+                  <Text style={styles.couponCode}>{c.code}</Text>
+                  <Text style={styles.couponDiscount}>{c.discount_percentage}% OFF</Text>
+                </View>
+                <Text style={styles.expandIcon}>{expandedCoupon === c.code ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              
+              {expandedCoupon === c.code && (
+                <View style={styles.usageContainer}>
+                  <Text style={styles.usageTitle}>USAGE LOG</Text>
+                  {isLoadingUsage && !usageData[c.code] ? (
+                    <ActivityIndicator size="small" color="#10b981" />
+                  ) : (usageData[c.code]?.length === 0 ? (
+                    <Text style={styles.noUsageText}>No usage recorded yet.</Text>
+                  ) : (
+                    usageData[c.code].map((use, idx) => (
+                      <View key={idx} style={styles.usageRow}>
+                        <View>
+                          <Text style={styles.usageName}>{use.user_name}</Text>
+                          <Text style={styles.usagePhone}>{use.user_phone}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.usageAmount}>₹{use.total_amount}</Text>
+                          <Text style={styles.usageDate}>{new Date(use.order_date).toLocaleDateString()}</Text>
+                        </View>
+                      </View>
+                    ))
+                  ))}
+                </View>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+
       <View style={styles.infoBox}>
         <Text style={styles.infoTitle}>How it works:</Text>
-        <Text style={styles.infoText}>• Customers enter the code at checkout.</Text>
-        <Text style={styles.infoText}>• Discount is applied to the final total.</Text>
+        <Text style={styles.infoText}>• Click a coupon to see who used it.</Text>
+        <Text style={styles.infoText}>• Total order value includes taxes and delivery.</Text>
         <Text style={styles.infoText}>• Coupons are active immediately after creation.</Text>
       </View>
     </ScrollView>
@@ -103,5 +167,19 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   infoBox: { marginTop: 32, backgroundColor: '#eff6ff', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#bfdbfe' },
   infoTitle: { fontSize: 14, fontWeight: '900', color: '#1e40af', marginBottom: 8 },
-  infoText: { fontSize: 13, color: '#1e40af', fontWeight: 'bold', marginBottom: 4 }
+  infoText: { fontSize: 13, color: '#1e40af', fontWeight: 'bold', marginBottom: 4 },
+  couponItem: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingVertical: 12 },
+  couponHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  couponCode: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
+  couponDiscount: { fontSize: 12, fontWeight: 'bold', color: '#10b981', marginTop: 2 },
+  expandIcon: { fontSize: 10, color: '#94a3b8' },
+  usageContainer: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 12, marginTop: 12 },
+  usageTitle: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 1, marginBottom: 8 },
+  noUsageText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 8 },
+  usageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  usageName: { fontSize: 12, fontWeight: 'bold', color: '#1e293b' },
+  usagePhone: { fontSize: 10, color: '#64748b' },
+  usageAmount: { fontSize: 12, fontWeight: '900', color: '#059669' },
+  usageDate: { fontSize: 10, color: '#94a3b8' },
+  emptyText: { textAlign: 'center', color: '#94a3b8', fontWeight: 'bold', paddingVertical: 20 }
 });

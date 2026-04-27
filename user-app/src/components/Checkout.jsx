@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Checkout({ cart, addToCart, decreaseQuantity, removeFromCart, clearCart, cartTotal, isStoreOpen, userPhone }) {
   const navigate = useNavigate();
@@ -10,6 +11,9 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
   const [tipAmount, setTipAmount] = useState(0);
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash or UPI
+  const [deliverySlot, setDeliverySlot] = useState('Immediate (As soon as possible)');
+  
+  const { t } = useTranslation();
 
   const discountAmount = appliedCoupon ? (cartTotal * appliedCoupon.discount_percentage / 100) : 0;
   const deliveryFee = cartTotal >= 100 ? 0 : 30;
@@ -88,7 +92,8 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
         tip_amount: tipAmount,
         delivery_instructions: deliveryInstructions,
         applied_coupon: appliedCoupon ? appliedCoupon.code : null,
-        payment_method: paymentMethod
+        payment_method: paymentMethod,
+        delivery_slot: deliverySlot
       });
       
       localStorage.setItem('joymart_phone', formData.phone);
@@ -108,6 +113,26 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveList = async () => {
+    const listName = prompt("Enter a name for this list (e.g., 'Monthly Ration'):");
+    if (!listName) return;
+    
+    try {
+      const userRes = await api.get(`/users/${userPhone}`);
+      await api.post(`/users/${userRes.data.id}/saved-lists`, {
+        list_name: listName,
+        items: cart.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity
+        }))
+      });
+      alert('Cart saved as Smart List successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save list. Please try again.');
     }
   };
 
@@ -298,12 +323,37 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
               </div>
             )}
             <div className="border-t-2 border-slate-200 border-dashed pt-4 mt-4 flex justify-between items-center">
-              <span className="text-lg font-black text-slate-900">Grand Total</span>
+              <span className="text-lg font-black text-slate-900">{t('Total') || 'Grand Total'}</span>
               <span className="text-3xl font-black text-emerald-600">₹{finalTotal.toFixed(2)}</span>
             </div>
           </div>
 
           <div className="mt-8">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 mb-6 shadow-sm">
+              <h3 className="font-black text-lg text-slate-900 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                {t('Delivery Time') || 'Delivery Time'}
+              </h3>
+              <div className="space-y-3">
+                {[
+                  'Immediate (As soon as possible)',
+                  'Today Evening (06:00 PM - 08:00 PM)',
+                  'Tomorrow Morning (07:00 AM - 09:00 AM)'
+                ].map((slot) => (
+                  <label key={slot} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${deliverySlot === slot ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                    <input 
+                      type="radio" 
+                      name="deliverySlot" 
+                      value={slot} 
+                      checked={deliverySlot === slot} 
+                      onChange={(e) => setDeliverySlot(e.target.value)}
+                      className="w-5 h-5 text-emerald-500 border-slate-300 focus:ring-emerald-500"
+                    />
+                    <span className={`font-bold ${deliverySlot === slot ? 'text-emerald-900' : 'text-slate-600'}`}>{t(slot) || slot}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="bg-slate-900 text-white rounded-2xl p-4 flex gap-4 items-center mb-6">
               <div className="bg-slate-800 p-2 rounded-xl shrink-0">
                 <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
@@ -321,13 +371,22 @@ export default function Checkout({ cart, addToCart, decreaseQuantity, removeFrom
                 <span className="w-full text-center">{!isStoreOpen ? 'Store is Closed' : 'Processing...'}</span>
               ) : (
                 <>
-                  <span>Place Order</span>
+                  <span>{t('Place Order') || 'Place Order'}</span>
                   <span className="flex items-center gap-2">
                     ₹{finalTotal.toFixed(2)}
                     <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"></path></svg>
                   </span>
                 </>
               )}
+            </button>
+            
+            <button 
+              type="button"
+              onClick={handleSaveList}
+              className="w-full mt-4 text-emerald-600 bg-emerald-50 border-2 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 font-black text-lg py-4 px-6 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+              Save Cart as Smart List
             </button>
           </div>
         </div>

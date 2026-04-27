@@ -6,6 +6,8 @@ export default function Orders() {
   const [analytics, setAnalytics] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [printPreviewOrder, setPrintPreviewOrder] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   const fetchOrders = async () => {
     try {
@@ -98,8 +100,20 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
+    const timerInterval = setInterval(() => setNow(Date.now()), 60000); // Update every minute
+    return () => {
+      clearInterval(interval);
+      clearInterval(timerInterval);
+    };
   }, [selectedDate]);
+
+  const getTimeElapsed = (orderDate) => {
+    const diff = Math.floor((now - new Date(orderDate).getTime()) / 60000);
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    return `${hours}h ${mins}m ago`;
+  };
 
   const updateStatus = async (orderId, newStatus) => {
     try {
@@ -207,13 +221,17 @@ export default function Orders() {
                           <div className="flex items-center gap-3">
                             <span className="font-black text-slate-900 text-xl">#{order.id}</span>
                             <button 
-                              onClick={() => handlePrint(order)}
+                              onClick={() => setPrintPreviewOrder(order)}
                               className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-900"
                               title="Print Bill"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             </button>
                           </div>
+                          <p className={`text-[10px] font-black mt-1 ${order.status === 'Pending' && (now - new Date(order.order_date).getTime() > 900000) ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>
+                            {getTimeElapsed(order.order_date)}
+                            {order.status === 'Pending' && (now - new Date(order.order_date).getTime() > 900000) && ' ⚠️ ALERT: SLOW'}
+                          </p>
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total</span>
@@ -303,12 +321,30 @@ export default function Orders() {
             <div className="p-6 sm:p-8">
               <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <h3 className="text-xl font-black text-slate-900">Order #{selectedOrderDetails.id}</h3>
-                <button onClick={() => setSelectedOrderDetails(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
-                  <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  {selectedOrderDetails.payment_method === 'Cash' && selectedOrderDetails.delivery_otp && (
+                    <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full animate-pulse border border-red-200 shadow-sm">
+                      OTP Required for Delivery
+                    </span>
+                  )}
+                  <button onClick={() => setSelectedOrderDetails(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+                    <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-6">
+                {selectedOrderDetails.payment_method === 'Cash' && selectedOrderDetails.delivery_otp && (
+                  <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-200 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Handover Security</h4>
+                      <p className="text-xs text-red-800 font-medium">Verify this PIN with customer</p>
+                    </div>
+                    <div className="bg-white px-4 py-2 rounded-xl shadow-inner border border-red-100">
+                      <span className="font-mono text-2xl font-black text-red-700 tracking-widest">{selectedOrderDetails.delivery_otp}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
                   <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Delivery Address</h4>
                   <p className="font-bold text-amber-900 text-lg">{selectedOrderDetails.user?.name || `Customer (ID: ${selectedOrderDetails.user_id})`}</p>
@@ -356,6 +392,61 @@ export default function Orders() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview Modal */}
+      {printPreviewOrder && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6">
+              <h3 className="text-xl font-black text-slate-900 mb-4">Receipt Preview</h3>
+              <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl font-mono text-xs text-slate-800 max-h-[60vh] overflow-y-auto">
+                <div className="text-center border-b border-dashed border-slate-300 pb-4 mb-4">
+                  <p className="font-black text-lg">JOYMART</p>
+                  <p>Fresh Groceries</p>
+                  <p>{new Date(printPreviewOrder.order_date).toLocaleString()}</p>
+                </div>
+                <div className="border-b border-dashed border-slate-300 pb-4 mb-4 space-y-1">
+                  <p>Order ID: #{printPreviewOrder.id}</p>
+                  <p>Customer: {printPreviewOrder.user?.name || "Guest"}</p>
+                  <p>Address: {printPreviewOrder.user?.flat_number}, {printPreviewOrder.user?.society?.name}</p>
+                </div>
+                <div className="border-b border-dashed border-slate-300 pb-4 mb-4 space-y-2">
+                  {printPreviewOrder.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{item.product?.name} x {item.quantity}</span>
+                      <span>₹{(item.price_at_purchase * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between font-black text-sm pt-2 border-t border-slate-300">
+                    <span>TOTAL:</span>
+                    <span>₹{printPreviewOrder.total_amount}</span>
+                  </div>
+                  <p className="text-center mt-4 text-[10px]">Thank you for shopping!</p>
+                </div>
+              </div>
+              <div className="flex gap-4 mt-6">
+                <button 
+                  onClick={() => setPrintPreviewOrder(null)}
+                  className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    handlePrint(printPreviewOrder);
+                    setPrintPreviewOrder(null);
+                  }}
+                  className="flex-1 bg-emerald-500 text-white font-black py-3 rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all"
+                >
+                  Confirm & Print
+                </button>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Activi
 import { useRouter } from 'expo-router';
 import { api } from '../api';
 import { useStore } from '../store';
+import { useTranslation } from 'react-i18next';
 
 export default function Checkout() {
   const router = useRouter();
@@ -18,6 +19,9 @@ export default function Checkout() {
   const [tipAmount, setTipAmount] = useState(0);
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash'); // Cash or UPI
+  const [deliverySlot, setDeliverySlot] = useState('Immediate (As soon as possible)');
+
+  const { t } = useTranslation();
 
   const discountAmount = appliedCoupon ? (cartTotal * appliedCoupon.discount_percentage / 100) : 0;
   const deliveryFee = cartTotal >= 100 ? 0 : 30;
@@ -73,7 +77,8 @@ export default function Checkout() {
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
     try {
-      const res = await api.get(`/coupons/${couponCode.toUpperCase()}`);
+      const phone = formData.phone || user.phone || '';
+      const res = await api.get(`/coupons/${couponCode.toUpperCase()}?phone=${phone}`);
       if (res.data.is_active) {
         setAppliedCoupon(res.data);
         Alert.alert("Success", `${res.data.discount_percentage}% discount applied!`);
@@ -81,7 +86,8 @@ export default function Checkout() {
         Alert.alert("Error", "This coupon is no longer active.");
       }
     } catch (err) {
-      Alert.alert("Error", "Invalid coupon code.");
+      const msg = err.response?.data?.detail || "Invalid coupon code.";
+      Alert.alert("Error", msg);
     }
   };
 
@@ -115,7 +121,8 @@ export default function Checkout() {
         tip_amount: tipAmount,
         delivery_instructions: deliveryInstructions,
         applied_coupon: appliedCoupon ? appliedCoupon.code : null,
-        payment_method: paymentMethod
+        payment_method: paymentMethod,
+        delivery_slot: deliverySlot
       });
       
       clearCart();
@@ -126,6 +133,36 @@ export default function Checkout() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveList = () => {
+    Alert.prompt(
+      "Save Cart as Smart List",
+      "Enter a name for this list (e.g., 'Monthly Ration'):",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: async (listName) => {
+            if (!listName) return;
+            try {
+              const userRes = await api.get(`/users/${user.phone}`);
+              await api.post(`/users/${userRes.data.id}/saved-lists`, {
+                list_name: listName,
+                items: cart.map(item => ({
+                  product_id: item.product.id,
+                  quantity: item.quantity
+                }))
+              });
+              Alert.alert('Success', 'Cart saved as Smart List successfully!');
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to save list.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (cart.length === 0) {
@@ -353,10 +390,33 @@ export default function Checkout() {
               <Text style={styles.deliveryPromoText}>Add ₹{(100 - cartTotal).toFixed(2)} more for FREE Delivery!</Text>
             </View>
           )}
+          </View>
           <View style={[styles.summaryRow, styles.grandTotalRow]}>
-            <Text style={styles.grandTotalLabel}>Grand Total</Text>
+            <Text style={styles.grandTotalLabel}>{t('Total') || 'Grand Total'}</Text>
             <Text style={styles.grandTotalValue}>₹{finalTotal.toFixed(2)}</Text>
           </View>
+        </View>
+
+        <View style={styles.slotContainer}>
+          <Text style={styles.slotHeader}>{t('Delivery Time') || 'Delivery Time'}</Text>
+          {[
+            'Immediate (As soon as possible)',
+            'Today Evening (06:00 PM - 08:00 PM)',
+            'Tomorrow Morning (07:00 AM - 09:00 AM)'
+          ].map((slot) => (
+            <TouchableOpacity 
+              key={slot} 
+              style={[styles.slotItem, deliverySlot === slot && styles.slotItemActive]}
+              onPress={() => setDeliverySlot(slot)}
+            >
+              <View style={[styles.radio, deliverySlot === slot && styles.radioActive]}>
+                {deliverySlot === slot && <View style={styles.radioInner} />}
+              </View>
+              <Text style={[styles.slotItemText, deliverySlot === slot && styles.slotItemTextActive]}>
+                {t(slot) || slot}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <View style={styles.paymentInfo}>
@@ -374,10 +434,17 @@ export default function Checkout() {
             <Text style={styles.submitButtonText}>Store is Closed</Text>
           ) : (
             <View style={styles.submitButtonInner}>
-              <Text style={styles.submitButtonText}>Place Order</Text>
+              <Text style={styles.submitButtonText}>{t('Place Order') || 'Place Order'}</Text>
               <Text style={styles.submitButtonText}>₹{finalTotal.toFixed(2)}</Text>
             </View>
           )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.saveListBtn}
+          onPress={handleSaveList}
+        >
+          <Text style={styles.saveListBtnText}>📝 Save Cart as Smart List</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -435,6 +502,8 @@ const styles = StyleSheet.create({
   submitButtonDisabled: { backgroundColor: '#cbd5e1' },
   submitButtonInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   submitButtonText: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  saveListBtn: { backgroundColor: '#ecfdf5', padding: 16, borderRadius: 16, marginTop: 12, borderWidth: 2, borderColor: '#a7f3d0', alignItems: 'center' },
+  saveListBtnText: { color: '#059669', fontSize: 16, fontWeight: '900' },
   couponSection: { marginBottom: 24 },
   couponRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   applyBtn: { backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 },
@@ -459,5 +528,11 @@ const styles = StyleSheet.create({
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#cbd5e1', justifyContent: 'center', alignItems: 'center' },
   radioActive: { borderColor: '#fff' },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
-  paymentHint: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginTop: 12, marginLeft: 4 }
+  paymentHint: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginTop: 12, marginLeft: 4 },
+  slotContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  slotHeader: { fontSize: 16, fontWeight: '900', color: '#0f172a', marginBottom: 12 },
+  slotItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 2, borderColor: '#f1f5f9', marginBottom: 8 },
+  slotItemActive: { borderColor: '#10b981', backgroundColor: '#ecfdf5' },
+  slotItemText: { fontSize: 14, fontWeight: 'bold', color: '#64748b', flex: 1, marginLeft: 12 },
+  slotItemTextActive: { color: '#065f46' }
 });

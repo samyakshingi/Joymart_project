@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { useTranslation } from 'react-i18next';
 
 export default function Home({ addToCart, decreaseQuantity, cart }) {
   const [products, setProducts] = useState([]);
@@ -9,6 +10,12 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
   const [frequentProducts, setFrequentProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [banners, setBanners] = useState([]);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [subModalProduct, setSubModalProduct] = useState(null);
+  const [subForm, setSubForm] = useState({ frequency: 'Daily', quantity: 1 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -44,7 +51,73 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
       }
     };
     fetchProducts();
+
+    const fetchBanners = async () => {
+      try {
+        const res = await api.get('/banners');
+        setBanners(res.data);
+      } catch(err) {}
+    };
+    fetchBanners();
   }, []);
+
+  useEffect(() => {
+    if (banners.length > 1) {
+      const interval = setInterval(() => {
+        setActiveBannerIndex(prev => (prev + 1) % banners.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [banners.length]);
+
+  const scrollToProduct = (productId) => {
+    const el = document.getElementById(`product-${productId}`);
+    if (el) {
+      const offset = 100;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = el.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+      
+      // Highlight the product
+      el.classList.add('ring-4', 'ring-emerald-500', 'ring-offset-4');
+      setTimeout(() => el.classList.remove('ring-4', 'ring-emerald-500', 'ring-offset-4'), 3000);
+    }
+  };
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!subModalProduct) return;
+    const phone = localStorage.getItem('joymart_phone');
+    if (!phone) {
+      alert("Please login first to subscribe.");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const userRes = await api.get(`/users/${phone}`);
+      await api.post(`/subscriptions`, {
+        user_id: userRes.data.id,
+        product_id: subModalProduct.id,
+        frequency: subForm.frequency,
+        quantity: parseInt(subForm.quantity)
+      });
+      alert('Subscription created successfully!');
+      setSubModalProduct(null);
+      setSubForm({ frequency: 'Daily', quantity: 1 });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create subscription.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const getQuantityInCart = (productId) => {
     const item = cart.find(i => i.product.id === productId);
@@ -61,7 +134,7 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
   const renderProductCard = (product, isCarousel = false) => {
     const qty = getQuantityInCart(product.id);
     return (
-      <div key={product.id} className={`bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden group snap-start ${isCarousel ? 'min-w-[160px] sm:min-w-[200px] flex-shrink-0' : ''}`}>
+      <div id={`product-${product.id}`} key={product.id} className={`bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden group snap-start ${isCarousel ? 'min-w-[160px] sm:min-w-[200px] flex-shrink-0' : ''}`}>
         <div className="h-40 bg-slate-50 flex items-center justify-center p-6 relative">
           {product.image_url ? (
             <img src={product.image_url} alt={product.name} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
@@ -85,18 +158,27 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
                 <span className="font-black text-slate-900 text-lg">₹{product.price}</span>
               )}
             </div>
-            {qty === 0 ? (
-              <button onClick={() => addToCart(product)} className="w-10 h-10 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center font-black transition-all shadow-sm hover:shadow-emerald-500/30">
-                +
-              </button>
-            ) : (
-              <div className="flex items-center bg-emerald-500 text-white rounded-full p-1 shadow-md shadow-emerald-500/20 animate-fade-in">
-                <button onClick={() => decreaseQuantity(product.id)} className="w-7 h-7 flex items-center justify-center font-black bg-white/20 hover:bg-white/40 rounded-full transition-colors">-</button>
-                <span className="w-6 text-center font-black text-sm">{qty}</span>
-                <button onClick={() => addToCart(product)} className="w-7 h-7 flex items-center justify-center font-black bg-white/20 hover:bg-white/40 rounded-full transition-colors">+</button>
-              </div>
-            )}
+            <div className="flex flex-col items-end gap-2">
+              {qty === 0 ? (
+                <button onClick={() => addToCart(product)} className="w-10 h-10 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center font-black transition-all shadow-sm hover:shadow-emerald-500/30">
+                  +
+                </button>
+              ) : (
+                <div className="flex items-center bg-emerald-500 text-white rounded-full p-1 shadow-md shadow-emerald-500/20 animate-fade-in">
+                  <button onClick={() => decreaseQuantity(product.id)} className="w-7 h-7 flex items-center justify-center font-black bg-white/20 hover:bg-white/40 rounded-full transition-colors">-</button>
+                  <span className="w-6 text-center font-black text-sm">{qty}</span>
+                  <button onClick={() => addToCart(product)} className="w-7 h-7 flex items-center justify-center font-black bg-white/20 hover:bg-white/40 rounded-full transition-colors">+</button>
+                </div>
+              )}
+            </div>
           </div>
+          <button 
+            onClick={() => setSubModalProduct(product)}
+            className="mt-3 w-full border-2 border-blue-100 text-blue-600 font-black text-xs py-2 rounded-xl hover:bg-blue-50 transition-colors uppercase tracking-widest flex items-center justify-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            Subscribe
+          </button>
         </div>
       </div>
     );
@@ -104,17 +186,40 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
 
   return (
     <div className="space-y-10 animate-fade-in">
-      {/* Hero Banner */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-14 text-white shadow-2xl relative overflow-hidden flex items-center justify-between">
-        <div className="relative z-10 max-w-lg">
-          <span className="inline-block py-1 px-4 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black tracking-widest uppercase mb-6 border border-emerald-500/30">Lightning Fast</span>
-          <h1 className="text-4xl sm:text-6xl font-black mb-4 tracking-tight leading-[1.1]">Groceries delivered in <span className="text-emerald-400">minutes.</span></h1>
+      {/* Dynamic Banner Carousel */}
+      {banners.length > 0 ? (
+        <div className="relative group">
+          <div className="bg-slate-900 rounded-[2.5rem] h-64 sm:h-[400px] text-white shadow-2xl relative overflow-hidden flex items-center">
+            {banners.map((banner, idx) => (
+              <div 
+                key={banner.id} 
+                className={`absolute inset-0 transition-opacity duration-1000 flex items-center justify-between cursor-pointer ${idx === activeBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+                onClick={() => banner.linked_product_id && scrollToProduct(banner.linked_product_id)}
+              >
+                <img src={banner.image_url} alt="Promotion" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+          {banners.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              {banners.map((_, idx) => (
+                <button 
+                  key={idx} 
+                  onClick={() => setActiveBannerIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all ${idx === activeBannerIndex ? 'w-8 bg-emerald-400' : 'w-2 bg-white/40'}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
-        <div className="absolute right-0 top-0 w-1/2 h-full opacity-30 pointer-events-none">
-           <div className="absolute inset-0 bg-gradient-to-l from-transparent to-slate-900 z-10"></div>
-           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle fill="#10b981" cx="2" cy="2" r="2"></circle></pattern></defs><rect x="0" y="0" width="100%" height="100%" fill="url(#dots)"></rect></svg>
+      ) : (
+        <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-14 text-white shadow-2xl relative overflow-hidden flex items-center justify-between">
+          <div className="relative z-10 max-w-lg">
+            <span className="inline-block py-1 px-4 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black tracking-widest uppercase mb-6 border border-emerald-500/30">Lightning Fast</span>
+            <h1 className="text-4xl sm:text-6xl font-black mb-4 tracking-tight leading-[1.1]">Groceries delivered in <span className="text-emerald-400">minutes.</span></h1>
+          </div>
         </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -201,6 +306,69 @@ export default function Home({ addToCart, decreaseQuantity, cart }) {
                 {displayedProducts.map(p => renderProductCard(p, false))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Modal */}
+      {subModalProduct && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 relative">
+              <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+              <div>
+                <h3 className="font-black text-xl text-slate-900">Subscribe</h3>
+                <p className="text-xs font-bold text-slate-500 mt-1 line-clamp-1">{subModalProduct.name}</p>
+              </div>
+              <button onClick={() => setSubModalProduct(null)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors font-bold">✕</button>
+            </div>
+            
+            <form onSubmit={handleSubscribe} className="p-6 space-y-6">
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold p-3 rounded-xl flex gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <p>Subscriptions are deducted from your JoyMart Wallet automatically.</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2 mb-2 block">Frequency</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {['Daily', 'Weekly'].map(freq => (
+                    <button
+                      key={freq}
+                      type="button"
+                      onClick={() => setSubForm({...subForm, frequency: freq})}
+                      className={`py-3 rounded-xl font-black text-sm border-2 transition-all ${
+                        subForm.frequency === freq ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      {freq}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2 mb-2 block">Quantity per delivery</label>
+                <div className="flex items-center gap-4">
+                  <button type="button" onClick={() => setSubForm(p => ({...p, quantity: Math.max(1, p.quantity - 1)}))} className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 font-black text-xl hover:bg-slate-200 transition-colors">-</button>
+                  <span className="flex-1 text-center font-black text-2xl text-slate-900">{subForm.quantity}</span>
+                  <button type="button" onClick={() => setSubForm(p => ({...p, quantity: p.quantity + 1}))} className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 font-black text-xl hover:bg-slate-200 transition-colors">+</button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="font-bold text-slate-500 text-sm">Estimated Cost</span>
+                <span className="font-black text-slate-900 text-xl">₹{((subModalProduct.discounted_price || subModalProduct.price) * subForm.quantity).toFixed(2)} / {subForm.frequency.toLowerCase()}</span>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-600/30 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Processing...' : 'Confirm Subscription'}
+              </button>
+            </form>
           </div>
         </div>
       )}

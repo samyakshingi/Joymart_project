@@ -6,13 +6,37 @@ import Checkout from './components/Checkout';
 import Tracking from './components/Tracking';
 import Login from './components/Login';
 import Profile from './components/Profile';
+import Wallet from './components/Wallet';
+import SmartLists from './components/SmartLists';
+import Subscriptions from './components/Subscriptions';
 import { About, Privacy, Terms } from './components/Legal';
+import { BRAND_CONFIG } from './constants';
 
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
+}
+
+const APP_VERSION = "1.0.0";
+const PLATFORM = "web";
+
+function ForceUpdateScreen() {
+  return (
+    <div className="fixed inset-0 bg-slate-900 z-[9999] flex items-center justify-center p-4">
+      <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full text-center shadow-2xl">
+        <h2 className="text-2xl font-black text-slate-900 mb-4">Update Required</h2>
+        <p className="text-slate-600 mb-8 font-semibold">A critical update is required to continue using {BRAND_CONFIG.name}.</p>
+        <button 
+          onClick={() => window.location.reload(true)}
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-xl transition-colors"
+        >
+          Update Now
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -27,6 +51,13 @@ function App() {
   const [isBumping, setIsBumping] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [userPhone, setUserPhone] = useState(() => localStorage.getItem('joymart_phone') || '');
+  const [forceUpdate, setForceUpdate] = useState(false);
+
+  useEffect(() => {
+    api.get(`/system/version-check?platform=${PLATFORM}&current_version=${APP_VERSION}`)
+      .then(res => setForceUpdate(res.data.force_update))
+      .catch(err => console.error('Version check failed', err));
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('joymart_cart', JSON.stringify(cart));
@@ -96,6 +127,8 @@ function App() {
     window.location.href = '/';
   };
 
+  if (forceUpdate) return <ForceUpdateScreen />;
+
   return (
     <Router>
       <ScrollToTop />
@@ -113,7 +146,7 @@ function App() {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 </div>
                 <span className="text-3xl font-black tracking-tighter text-slate-900 group-hover:text-emerald-600 transition-colors">
-                  JoyMart
+                  {BRAND_CONFIG.APP_NAME}
                 </span>
               </Link>
               <div className="flex items-center space-x-4 sm:space-x-8">
@@ -148,6 +181,9 @@ function App() {
             <Route path="/checkout" element={userPhone ? <Checkout cart={cart} addToCart={addToCart} decreaseQuantity={decreaseQuantity} removeFromCart={removeFromCart} clearCart={clearCart} cartTotal={cartTotal} isStoreOpen={isStoreOpen} userPhone={userPhone} /> : <Login onLogin={setUserPhone} />} />
             <Route path="/tracking" element={userPhone ? <Tracking /> : <Login onLogin={setUserPhone} />} />
             <Route path="/profile" element={userPhone ? <Profile userPhone={userPhone} onLogout={handleLogout} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/wallet" element={userPhone ? <Wallet userPhone={userPhone} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/lists" element={userPhone ? <SmartLists userPhone={userPhone} setCart={setCart} /> : <Login onLogin={setUserPhone} />} />
+            <Route path="/subscriptions" element={userPhone ? <Subscriptions userPhone={userPhone} /> : <Login onLogin={setUserPhone} />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />

@@ -8,6 +8,8 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [printPreviewOrder, setPrintPreviewOrder] = useState(null);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -32,8 +34,20 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
+    const timerInterval = setInterval(() => setNow(Date.now()), 60000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(timerInterval);
+    };
   }, []);
+
+  const getTimeElapsed = (orderDate) => {
+    const diff = Math.floor((now - new Date(orderDate).getTime()) / 60000);
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    return `${hours}h ${mins}m ago`;
+  };
 
   const updateStatus = async (orderId, newStatus) => {
     try {
@@ -145,8 +159,12 @@ export default function Orders() {
                           <View>
                             <Text style={styles.orderIdLabel}>ORDER ID</Text>
                             <Text style={styles.orderIdValue}>#{order.id}</Text>
+                            <Text style={[styles.timerText, order.status === 'Pending' && (now - new Date(order.order_date).getTime() > 900000) && styles.timerAlert]}>
+                              {getTimeElapsed(order.order_date)}
+                              {order.status === 'Pending' && (now - new Date(order.order_date).getTime() > 900000) && ' ⚠️'}
+                            </Text>
                           </View>
-                          <TouchableOpacity onPress={() => handlePrint(order)} style={styles.printBtn}>
+                          <TouchableOpacity onPress={() => setPrintPreviewOrder(order)} style={styles.printBtn}>
                             <Text style={{ fontSize: 18 }}>🖨️</Text>
                           </TouchableOpacity>
                         </View>
@@ -163,6 +181,13 @@ export default function Orders() {
                         <View style={styles.instructionsBox}>
                           <Text style={styles.instructionsLabel}>INSTRUCTIONS:</Text>
                           <Text style={styles.instructionsText}>{order.delivery_instructions}</Text>
+                        </View>
+                      )}
+
+                      {order.payment_method === 'Cash' && order.delivery_otp && (
+                        <View style={styles.otpBox}>
+                          <Text style={styles.otpWarningText}>⚠️ OTP Required for Delivery</Text>
+                          <Text style={styles.otpText}>Handover PIN: <Text style={styles.otpPin}>{order.delivery_otp}</Text></Text>
                         </View>
                       )}
                       
@@ -220,6 +245,50 @@ export default function Orders() {
           );
         })}
       </View>
+
+      {/* Print Preview Modal */}
+      {printPreviewOrder && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Bill Preview</Text>
+            <ScrollView style={styles.previewBox}>
+              <View style={styles.receipt}>
+                <Text style={styles.receiptHeader}>JOYMART</Text>
+                <Text style={styles.receiptSub}>Fresh Groceries</Text>
+                <View style={styles.receiptDash} />
+                <Text style={styles.receiptText}>Order: #{printPreviewOrder.id}</Text>
+                <Text style={styles.receiptText}>Date: {new Date(printPreviewOrder.order_date).toLocaleString()}</Text>
+                <View style={styles.receiptDash} />
+                {printPreviewOrder.items.map(item => (
+                  <View key={item.id} style={styles.receiptRow}>
+                    <Text style={styles.receiptText}>{item.product?.name} x{item.quantity}</Text>
+                    <Text style={styles.receiptText}>₹{(item.price_at_purchase * item.quantity).toFixed(2)}</Text>
+                  </View>
+                ))}
+                <View style={styles.receiptDash} />
+                <View style={styles.receiptRow}>
+                  <Text style={styles.receiptTotalLabel}>TOTAL</Text>
+                  <Text style={styles.receiptTotalValue}>₹{printPreviewOrder.total_amount}</Text>
+                </View>
+              </View>
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setPrintPreviewOrder(null)} style={[styles.modalBtn, styles.btnCancel]}>
+                <Text style={styles.btnCancelText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  handlePrint(printPreviewOrder);
+                  setPrintPreviewOrder(null);
+                }} 
+                style={[styles.modalBtn, styles.btnPrint]}
+              >
+                <Text style={styles.btnPrintText}>Confirm & Print</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -256,6 +325,10 @@ const styles = StyleSheet.create({
   instructionsBox: { backgroundColor: '#fff7ed', borderLeftWidth: 4, borderLeftColor: '#fb923c', padding: 10, borderRadius: 8, marginBottom: 12 },
   instructionsLabel: { fontSize: 9, fontWeight: '900', color: '#9a3412', marginBottom: 2 },
   instructionsText: { fontSize: 13, color: '#7c2d12', fontWeight: 'bold' },
+  otpBox: { backgroundColor: '#fef2f2', borderLeftWidth: 4, borderLeftColor: '#ef4444', padding: 10, borderRadius: 8, marginBottom: 12 },
+  otpWarningText: { fontSize: 10, fontWeight: '900', color: '#b91c1c', marginBottom: 2 },
+  otpText: { fontSize: 13, color: '#7f1d1d', fontWeight: 'bold' },
+  otpPin: { fontSize: 16, fontWeight: '900', letterSpacing: 2 },
   orderMetaRow: { flexDirection: 'row', backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, justifyContent: 'space-between', marginBottom: 16 },
   orderMetaText: { fontSize: 12, fontWeight: 'bold', color: '#475569' },
   actionRow: { flexDirection: 'row', gap: 8 },
@@ -270,6 +343,26 @@ const styles = StyleSheet.create({
   textComplete: { color: '#7e22ce', fontWeight: 'bold' },
   completedBadge: { backgroundColor: '#f8fafc', paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   completedBadgeText: { color: '#64748b', fontWeight: 'bold' },
-  printBtn: { backgroundColor: '#f1f5f9', p: 8, borderRadius: 12, padding: 6 },
-  paymentMethodLabel: { fontSize: 10, fontWeight: '900', color: '#10b981', backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, textTransform: 'uppercase' }
+  printBtn: { backgroundColor: '#f1f5f9', borderRadius: 12, padding: 6 },
+  paymentMethodLabel: { fontSize: 10, fontWeight: '900', color: '#10b981', backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, textTransform: 'uppercase' },
+  timerText: { fontSize: 10, fontWeight: '900', color: '#94a3b8', marginTop: 2 },
+  timerAlert: { color: '#ef4444' },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 },
+  modalContent: { backgroundColor: '#fff', borderRadius: 24, width: '100%', maxHeight: '80%', padding: 24 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a', marginBottom: 16 },
+  previewBox: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 20 },
+  receipt: { alignItems: 'center' },
+  receiptHeader: { fontSize: 20, fontWeight: '900', color: '#0f172a' },
+  receiptSub: { fontSize: 12, color: '#64748b', marginBottom: 10 },
+  receiptDash: { width: '100%', height: 1, borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1', marginVertical: 10 },
+  receiptText: { fontSize: 12, color: '#475569', alignSelf: 'flex-start' },
+  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginVertical: 2 },
+  receiptTotalLabel: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
+  receiptTotalValue: { fontSize: 16, fontWeight: '900', color: '#059669' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  btnCancel: { backgroundColor: '#f1f5f9' },
+  btnCancelText: { color: '#475569', fontWeight: 'bold' },
+  btnPrint: { backgroundColor: '#0f172a' },
+  btnPrintText: { color: '#fff', fontWeight: '900' }
 });
